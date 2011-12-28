@@ -16,7 +16,7 @@ def push_data():
     mb = MusicBrainzClient(cfg.MB_USERNAME, cfg.MB_PASSWORD, cfg.MB_SITE)
     for row in aClient.get_mb_data():
         gid, workid, iswc, artist, work = row
-        note = 'Data taken from ' + aClient.search_url(workid, 'i')
+        note = 'Data taken from ' + aClient.search_url(str(workid), 'i')
         mb.edit_work(gid, {'iswc': iswc}, note)
         print artist + ' work: ' + work + ' Done!'
 

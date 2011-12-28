@@ -139,8 +139,6 @@ class AscapClient(object):
         SELECT * FROM ascap_mb
         """
         return self.mbdb.execute(query).fetchall()
-        return [("e8a5fe99-0aff-3e7b-840c-7ab96cb702be","320231156","T-070.015.405-7","Bruce Springsteen","Badlands"),\
-        ("6ce583b4-ca66-3f52-a7e8-5941f7f49ae0","320445970","T-070.019.549-8","Bruce Springsteen","Balboa Park")]
 
     def artist_is_done(self, id):
         query = 'SELECT done FROM ascap_artist_id WHERE id = %s'
