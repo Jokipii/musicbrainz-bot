@@ -175,3 +175,21 @@ class MusicBrainzClient(object):
 
     def set_release_script(self, entity_id, old_script_id, new_script_id, edit_note, auto=False):
         self._edit_release_information(entity_id, {"script_id": [[str(old_script_id)],[str(new_script_id)]]}, edit_note, auto)
+
+    def edit_work(self, entity_id, update, edit_note, auto=False):
+        self.b.open(self.url("/work/%s/edit" % (entity_id,)))
+        self.b.select_form(predicate=lambda f: f.method == "POST" and "/edit" in f.action)
+        # rest of fields can be added when someone needs those
+        if 'iswc' in update:
+            if self.b["edit-work.iswc"] != '':
+                print " * ISWC already set, not changing"
+                return
+            self.b["edit-work.iswc"] = str(update['iswc'])
+        self.b["edit-work.edit_note"] = edit_note.encode('utf8')
+        try: self.b["edit-work.as_auto_editor"] = ["1"] if auto else []
+        except mechanize.ControlNotFoundError: pass
+        self.b.submit()
+        page = self.b.response().read()
+        if "Thank you, your edit has been" not in page:
+            if 'any changes to the data already present' not in page:
+                raise Exception('unable to post edit')
