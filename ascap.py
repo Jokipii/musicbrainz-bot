@@ -27,10 +27,24 @@ class AscapClient(object):
             try:
                 if not (self.work_is_done(id)):
                     self.get_work_info(id)
-            except AttributeError, msg:
-                print 'AttributeException...' + msg
-            except socket.error, msg:
-                print 'socket.error...' + msg
+            except AttributeError as msg:
+                print 'AttributeException... in ' + id, msg
+            except socket.error as msg:
+                print 'socket.error...' + id, msg
+
+    def do_ipis(self):
+        # go thru all writers that not yet have ipi code
+        query = 'SELECT name FROM ascap_artist WHERE ipicode ISNULL'
+        result = self.mbdb.execute(query).fetchall()
+        for row in result:
+            name = str(row[0])
+            try:
+                self.search_writer(name)
+                print name + ' Done!'
+            except AttributeError as msg:
+                print 'AttributeException... in ' + name, msg
+            except socket.error as msg:
+                print 'socket.error... in ' + name, msg
 
     def search_writer(self, searchstr):
         page = self.search(searchstr, ['w'])
@@ -43,8 +57,12 @@ class AscapClient(object):
         for link in links:
             ipicodes.append(link.strip())
         # now we have all ids, names and ipicodes in lists
-        for i in range(len(ids)):
-            self.store_artist(ids[i], names[i], ipicodes[i])
+        # first we do safety test and then store information
+        if len(ids) == len(ipicodes):
+            for i in range(len(ids)):
+                self.store_artist(ids[i], names[i], ipicodes[i])
+        else:
+            print searchstr + ' not stored. Different number of ipicodes!'
         return ids, names, ipicodes
 
     def search_title(self, searchstr):
