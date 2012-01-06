@@ -112,6 +112,14 @@ ALTER TABLE mb_label_link DROP COLUMN id2;
         self.mbdb.execute(mbquery)
         self.dodb.execute(text(doquery), dblink=cfg.MB_DB_LINK)
 
+    def create_track_count(self):
+        doquery = """
+SELECT release_id, COUNT(track_id)
+INTO release_track_count FROM track
+GROUP BY release_id;
+"""
+        self.dodb.execute(doquery)
+
     def createfunctions(self):
         doquery = """
 -- function to decode url
@@ -140,12 +148,15 @@ $$ LANGUAGE plpython3u;
         mbquery = """
 DROP TABLE IF EXISTS do_release_link_catno;
 -- all releases linked to linked labels that have catalog_number
-SELECT do_label_link.name AS label_name, do_label_link.gid AS label_gid, release_label.catalog_number, release.gid, release_name.name
+SELECT do_label_link.name AS label_name, do_label_link.gid AS label_gid, release_label.catalog_number, release.gid, 
+release_name.name, tracklist.track_count
 INTO do_release_link_catno
 FROM do_label_link
 JOIN release_label ON do_label_link.id = release_label.label
 JOIN release ON release_label.release = release.id
 JOIN release_name ON release.name = release_name.id
+JOIN medium ON medium.release = release.id
+JOIN tracklist ON medium.tracklist = tracklist.id
 WHERE release_label.catalog_number NOTNULL;
 
 -- delete releases that are already linked to discogs
@@ -164,8 +175,8 @@ DROP TABLE IF EXISTS rel_catno, discogs_db_release_link;
 
 -- find releases that are releted to same label and have same catalog_number
 WITH mb_release_link_catno AS (
-    SELECT DISTINCT t1.* FROM dblink(:dblink, 'SELECT label_gid, label_name, catalog_number, gid, name FROM do_release_link_catno')
-    AS t1(label_gid uuid, label_name text, catalog_number text, gid uuid, name text)
+    SELECT DISTINCT t1.* FROM dblink(:dblink, 'SELECT label_gid, label_name, catalog_number, gid, name, track_count FROM do_release_link_catno')
+    AS t1(label_gid uuid, label_name text, catalog_number text, gid uuid, name text, track_count integer)
 )
 SELECT DISTINCT mb_label_link.id AS label_id, mb_release_link_catno.*, releases_labels.release_id 
 INTO rel_catno 
@@ -194,7 +205,9 @@ WHERE gid IN (
 WITH rel_catno2 AS (
     SELECT rel_catno.* FROM rel_catno
     JOIN release ON rel_catno.release_id = release.id
+    JOIN release_track_count ON release_track_count.release_id = release.id
     WHERE upper(release.title) = upper(rel_catno.name)
+    AND release_track_count.count = track_count
 )
 SELECT gid, 'http://www.discogs.com/release/' || release_id AS url, 'Label "' || label_name || '": http://musicbrainz.org/label/' 
 || label_gid || ' have Discogs link.
