@@ -141,6 +141,15 @@ AS $$
   encoded = urllib.parse.quote_plus(name,'()')
   return encoded
 $$ LANGUAGE plpython3u;
+
+-- change some formats so they can be matched
+UPDATE rel_catno SET format = 'File' WHERE format = 'Digital Media';
+UPDATE rel_catno SET format = 'Minidisc' WHERE format = 'MiniDisc';
+UPDATE rel_catno SET format = 'CDr' WHERE format = 'CR-R';
+
+-- change some release countries so they can be matched
+UPDATE release SET country = 'United States' WHERE country = 'US';
+UPDATE release SET country = 'United Kingdom' WHERE country = 'UK';
 """
         self.dodb.execute(doquery)
 
@@ -149,11 +158,12 @@ $$ LANGUAGE plpython3u;
 DROP TABLE IF EXISTS do_release_link_catno;
 -- all releases linked to linked labels that have catalog_number
 SELECT do_label_link.name AS label_name, do_label_link.gid AS label_gid, release_label.catalog_number, release.gid, 
-release_name.name, tracklist.track_count, medium_format.name AS format
+release_name.name, tracklist.track_count, medium_format.name AS format, country.name AS country
 INTO do_release_link_catno
 FROM do_label_link
 JOIN release_label ON do_label_link.id = release_label.label
 JOIN release ON release_label.release = release.id
+JOIN country ON release.country = country.id
 JOIN release_name ON release.name = release_name.id
 JOIN medium ON medium.release = release.id
 JOIN tracklist ON medium.tracklist = tracklist.id
@@ -176,8 +186,8 @@ DROP TABLE IF EXISTS rel_catno, discogs_db_release_link;
 
 -- find releases that are releted to same label and have same catalog_number
 WITH mb_release_link_catno AS (
-    SELECT DISTINCT t1.* FROM dblink(:dblink, 'SELECT label_gid, label_name, catalog_number, gid, name, track_count, format FROM do_release_link_catno')
-    AS t1(label_gid uuid, label_name text, catalog_number text, gid uuid, name text, track_count integer, format text)
+    SELECT DISTINCT t1.* FROM dblink(:dblink, 'SELECT label_gid, label_name, catalog_number, gid, name, track_count, format, country FROM do_release_link_catno')
+    AS t1(label_gid uuid, label_name text, catalog_number text, gid uuid, name text, track_count integer, format text, country text)
 )
 SELECT DISTINCT mb_label_link.id AS label_id, mb_release_link_catno.*, releases_labels.release_id
 INTO rel_catno 
@@ -203,11 +213,6 @@ WHERE gid IN (
   HAVING (COUNT(gid) > 1)
 );
 
--- change some formats so they can be matched
-UPDATE rel_catno SET format = 'File' WHERE format = 'Digital Media';
-UPDATE rel_catno SET format = 'Minidisc' WHERE format = 'MiniDisc';
-UPDATE rel_catno SET format = 'CDr' WHERE format = 'CR-R';
-
 WITH rel_catno2 AS (
     SELECT DISTINCT rel_catno.* FROM rel_catno
     JOIN release ON rel_catno.release_id = release.id
@@ -216,13 +221,14 @@ WITH rel_catno2 AS (
     WHERE upper(release.title) = upper(rel_catno.name)
     AND release_track_count.count = track_count
     AND format = releases_formats.format_name
+    AND rel_catno.country = release.country
 )
 SELECT gid, 'http://www.discogs.com/release/' || release_id AS url, 'Label "' || label_name || '": http://musicbrainz.org/label/' 
 || label_gid || ' have Discogs link.
 It collection contains release "' || name || '": http://musicbrainz.org/release/' 
 || gid || ' with unique catalog number "' || catalog_number || '".
 Collection of linked Discogs label contains release http://www.discogs.com/release/'
-|| release_id  || ' with same unique catalog number, case insensitive match on release name, same number of tracks and same format' AS note
+|| release_id  || ' with same unique catalog number, case insensitive match on release name, same number of tracks, same format and same release country' AS note
 INTO discogs_db_release_link
 FROM rel_catno2
 ORDER BY label_name;
@@ -312,4 +318,4 @@ DROP TABLE IF EXISTS possible_artist_mblink2, possible_artist_mblink3, mb_artist
 """
         self.mbdb.execute(mbquery)
         self.dodb.execute(text(doquery), dblink=cfg.MB_DB_LINK)
-        self.mbdb.execute(mbquery_cleanup)
+        #self.mbdb.execute(mbquery_cleanup)
