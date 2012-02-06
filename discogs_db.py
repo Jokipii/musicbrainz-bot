@@ -142,6 +142,16 @@ AS $$
   return encoded
 $$ LANGUAGE plpython3u;
 
+-- function that return artist name without possible " (n)" number in end
+CREATE OR REPLACE FUNCTION artist_name(name text)
+  RETURNS text
+AS $$
+  import re
+  global name
+  result = re.match("(.+?)( \(\d+\))?$",name)
+  return result.group(1)
+$$ LANGUAGE plpython3u;
+
 -- change some formats so they can be matched
 UPDATE rel_catno SET format = 'File' WHERE format = 'Digital Media';
 UPDATE rel_catno SET format = 'Minidisc' WHERE format = 'MiniDisc';
@@ -300,14 +310,14 @@ WHERE artist_gid IN (
   SELECT artist_gid FROM possible_artist_mblink2
   GROUP BY artist_gid
   HAVING (COUNT(artist_gid) = 1)
-) AND artist_name = discogs_artist_name;
+) AND artist_name = artist_name(discogs_artist_name);
 
 DROP TABLE IF EXISTS mb_artist_releases2;
 SELECT *, release_name || ': http://musicbrainz.org/release/' || release_gid AS rel INTO mb_artist_releases2 FROM mb_artist_releases;
 
 DROP TABLE IF EXISTS discogs_db_artist_link;
 -- possible artis links
-SELECT possible_artist_mblink3.artist_gid, url(possible_artist_mblink3.artist_name), 
+SELECT possible_artist_mblink3.artist_gid, url(possible_artist_mblink3.discogs_artist_name), 
 (SELECT string_agg(mb_artist_releases2.rel,' , ') 
 FROM mb_artist_releases2 
 WHERE possible_artist_mblink3.artist_gid = mb_artist_releases2.artist_gid) AS releases
