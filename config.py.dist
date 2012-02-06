@@ -6,3 +6,5 @@ MB_DB = 'postgresql://musicbrainz:xxx@127.0.0.1:5432/musicbrainz'
 MB_DB_LINK = 'dbname=musicbrainz port=5432 user=musicbrainz password=xxx'
 
 DO_DB = 'postgresql://discogs:xxx@127.0.0.1:5432/discogs'
+WWW_USER_AGENT = None
+
