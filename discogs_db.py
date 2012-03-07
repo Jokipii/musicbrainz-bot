@@ -22,6 +22,15 @@ class DiscogsDbClient(object):
             self.dodb.execute(queryDelete, gid)
             print url + " Done!"
 
+    def commit_artist_links2(self, limit):
+        mbClient = MusicBrainzClient(cfg.MB_USERNAME, cfg.MB_PASSWORD, cfg.MB_SITE)
+        queryLinks = "SELECT artist_gid, url, releases FROM discogs_db_artist_link2 LIMIT %s"
+        queryDelete = "DELETE FROM discogs_db_artist_link2 WHERE artist_gid = %s"
+        for gid, url, releases in self.dodb.execute(queryLinks, limit):
+            mbClient.add_url("artist", gid, 180, url, releases)
+            self.dodb.execute(queryDelete, gid)
+            print url + " Done!"
+
     def commit_release_links(self, limit):
         mbClient = MusicBrainzClient(cfg.MB_USERNAME, cfg.MB_PASSWORD, cfg.MB_SITE)
         queryLinks = "SELECT gid, url, note FROM discogs_db_release_link LIMIT %s"
@@ -30,6 +39,54 @@ class DiscogsDbClient(object):
             mbClient.add_url("release", gid, 76, url, note)
             self.dodb.execute(queryDelete, gid)
             print url + " Done!"
+
+    def commit_release_artist_relationship(self, limit):
+        mbClient = MusicBrainzClient(cfg.MB_USERNAME, cfg.MB_PASSWORD, cfg.MB_SITE)
+        queryLinks = "SELECT release_gid, release_url, artist_gid, artist_url FROM do_release_artist_credits LIMIT %s"
+        queryDelete = "DELETE FROM do_release_artist_credits WHERE release_gid = %s AND artist_gid = %s"
+        for release_gid, release_url, artist_gid, artist_url in self.mbdb.execute(queryLinks, limit):
+            note = "Linked release: " + release_url + "\nLinked artist: " + artist_url
+            mbClient.add_relationship("artist", "release", artist_gid, release_gid, 30, {}, note)
+            self.mbdb.execute(queryDelete, release_gid, artist_gid)
+            print release_gid + " " + artist_gid + " Done!"
+
+    def commit_artist_types(self, limit):
+        mbClient = MusicBrainzClient(cfg.MB_USERNAME, cfg.MB_PASSWORD, cfg.MB_SITE)
+        query1 = """
+SELECT DISTINCT artist.gid, 'Singer/actor/producer/composer/conductor/dj in disambiguation comment' AS note
+FROM artist
+WHERE type ISNULL AND lower(comment) LIKE ANY(array[
+'%% singer', '%% singer %%','singer %%',
+'%% actor', '%% actor %%','actor %%',
+'%% producer','%% producer %%','producer %%',
+'%% composer','%% composer %%','composer %%',
+'%% conductor','%% conductor %%','conductor %%',
+'%% dj','%% dj %%','dj %%'
+])
+LIMIT %s
+ """
+        self.commit_artist_type(query1, limit, 1, mbClient)
+        query2 = """
+SELECT DISTINCT artist.gid, 'Band/group/duo/duet/trio/quartet/orchestra/ensemble in disambiguation comment' AS note
+FROM artist
+WHERE type ISNULL AND lower(comment) LIKE ANY(array[
+'%% band','%% band %%','band %%',
+'%% group','%% group %%','group %%',
+'%% trio','%% trio %%','trio %%',
+'%% quartet','%% quartet %%','quartet %%',
+'%% duo','%% duo %%','duo %%',
+'%% duet','%% duet %%','duet %%',
+'%% orchestra','%% orchestra %%','orchestra %%',
+'%% ensemble','%% ensemble %%','ensemble %%'
+])
+LIMIT %s
+"""
+        self.commit_artist_type(query2, limit, 2, mbClient)
+
+    def commit_artist_type(self, query, limit, type, mbClient):
+        for gid, note in self.mbdb.execute(query, limit):
+            mbClient.set_artist_type(gid, type, note)
+            print gid + " Done!"
 
     def createlinks(self):
         mbquery = """
@@ -77,35 +134,35 @@ AND url.url LIKE '%%discogs.com/label/%%';
         doquery = """
 DROP TABLE IF EXISTS mb_release_link, mb_release_group_link, mb_artist_link, mb_label_link;
 
-SELECT t1.gid, t1.name, t1.url, decodeURL(t1.url, 'http://www.discogs.com/release/') AS id2 
+SELECT t1.gid, t1.name, t1.url, decodeURL(t1.url, 'http://www.discogs.com/release/')::integer AS id2 
 INTO mb_release_link 
 FROM dblink(:dblink, 'SELECT gid, name, url FROM do_release_link') AS t1(gid uuid, name text, url text);
 ALTER TABLE mb_release_link ADD COLUMN id integer;
-UPDATE mb_release_link SET id = release.id FROM release WHERE id2 = release.id::text;
+UPDATE mb_release_link SET id = release.id FROM release WHERE id2 = release.id;
 DELETE FROM mb_release_link WHERE id IS NULL;
 ALTER TABLE mb_release_link DROP COLUMN id2;
 
-SELECT t1.gid, t1.name, t1.url, decodeURL(t1.url, 'http://www.discogs.com/master/') AS id2 
+SELECT t1.gid, t1.name, t1.url, decodeURL(t1.url, 'http://www.discogs.com/master/')::integer AS id2 
 INTO mb_release_group_link 
 FROM dblink(:dblink, 'SELECT gid, name, url FROM do_release_group_link') AS t1(gid uuid, name text, url text);
-ALTER TABLE mb_release_group_link ADD COLUMN id text;
-UPDATE mb_release_group_link SET id = master.id FROM master WHERE id2::integer = master.id;
+ALTER TABLE mb_release_group_link ADD COLUMN id integer;
+UPDATE mb_release_group_link SET id = master.id FROM master WHERE id2 = master.id;
 DELETE FROM mb_release_group_link WHERE id IS NULL;
 ALTER TABLE mb_release_group_link DROP COLUMN id2;
 
-SELECT t1.gid, t1.name, t1.url, decodeURL(t1.url, 'http://www.discogs.com/artist/') AS id2 
+SELECT t1.gid, t1.name, t1.url, lower(decodeURL(t1.url, 'http://www.discogs.com/artist/')) AS id2 
 INTO mb_artist_link 
 FROM dblink(:dblink, 'SELECT gid, name, url FROM do_artist_link') AS t1(gid uuid, name text, url text);
 ALTER TABLE mb_artist_link ADD COLUMN id integer;
-UPDATE mb_artist_link SET id = artist.id FROM artist WHERE id2 = artist.name;
+UPDATE mb_artist_link SET id = artist.id FROM artist WHERE id2 = lower(artist.name);
 DELETE FROM mb_artist_link WHERE id IS NULL;
 ALTER TABLE mb_artist_link DROP COLUMN id2;
 
-SELECT t1.gid, t1.name, t1.url, decodeURL(t1.url, 'http://www.discogs.com/label/') AS id2 
+SELECT t1.gid, t1.name, t1.url, lower(decodeURL(t1.url, 'http://www.discogs.com/label/')) AS id2 
 INTO mb_label_link 
 FROM dblink(:dblink, 'SELECT gid, name, url FROM do_label_link') AS t1(gid uuid, name text, url text);
 ALTER TABLE mb_label_link ADD COLUMN id integer;
-UPDATE mb_label_link SET id = label.id FROM label WHERE id2 = label.name;
+UPDATE mb_label_link SET id = label.id FROM label WHERE id2 = lower(label.name);
 DELETE FROM mb_label_link WHERE id IS NULL;
 ALTER TABLE mb_label_link DROP COLUMN id2;
 """
@@ -151,11 +208,6 @@ AS $$
   result = re.match("(.+?)( \(\d+\))?$",name)
   return result.group(1)
 $$ LANGUAGE plpython3u;
-
--- change some formats so they can be matched
-UPDATE rel_catno SET format = 'File' WHERE format = 'Digital Media';
-UPDATE rel_catno SET format = 'Minidisc' WHERE format = 'MiniDisc';
-UPDATE rel_catno SET format = 'CDr' WHERE format = 'CR-R';
 
 -- change some release countries so they can be matched
 UPDATE release SET country = 'United States' WHERE country = 'US';
@@ -206,6 +258,11 @@ JOIN mb_label_link ON mb_release_link_catno.label_gid = mb_label_link.gid
 JOIN label ON mb_label_link.id = label.id
 JOIN releases_labels ON label.name = releases_labels.label
 WHERE releases_labels.catno = mb_release_link_catno.catalog_number;
+
+-- change some formats so they can be matched
+UPDATE rel_catno SET format = 'File' WHERE format = 'Digital Media';
+UPDATE rel_catno SET format = 'Minidisc' WHERE format = 'MiniDisc';
+UPDATE rel_catno SET format = 'CDr' WHERE format = 'CR-R';
 
 -- remove releases with non unique catalog_numbers
 DELETE FROM rel_catno
@@ -295,12 +352,13 @@ WHERE release_gid IN (
 
 DROP TABLE IF EXISTS possible_artist_mblink2;
 
-SELECT DISTINCT mb_artist_releases.artist_name, releases_artists.artist_name as discogs_artist_name, mb_artist_releases.artist_gid
+SELECT DISTINCT mb_artist_releases.artist_name, artist.name as discogs_artist_name, mb_artist_releases.artist_gid
 INTO possible_artist_mblink2 
 FROM mb_artist_releases
 JOIN mb_release_link ON mb_artist_releases.release_gid = mb_release_link.gid
 JOIN releases_artists ON mb_release_link.id = releases_artists.release_id
-WHERE releases_artists.artist_name!='Various';
+JOIN artist ON releases_artists.artist_id = artist.id
+WHERE artist.name!='Various';
 
 DROP TABLE IF EXISTS possible_artist_mblink3;
 

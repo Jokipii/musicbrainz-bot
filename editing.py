@@ -75,6 +75,7 @@ class MusicBrainzClient(object):
         self.b.select_form(predicate=lambda f: f.method == "POST" and "/login" in f.action)
         self.b["username"] = username
         self.b["password"] = password
+        self.b["remember_me"] = ["1"]
         self.b.submit()
         resp = self.b.response()
         if resp.geturl() != self.url("/user/" + username):
@@ -199,6 +200,21 @@ class MusicBrainzClient(object):
         page = self.b.response().read()
         if "Thank you, your edit has been" not in page:
             if "any changes to the data already present" not in page:
+                raise Exception('unable to post edit')
+
+    def add_relationship(self, entity0_type, entity1_type, entity0_gid, entity1_gid, link_type_id, attributes, edit_note, auto=False):
+        self.b.open(self.url("/edit/relationship/create", type0=entity0_type, type1=entity1_type, entity0=entity0_gid, entity1=entity1_gid))
+        self.b.select_form(predicate=lambda f: f.method == "POST" and "/edit" in f.action)
+        self.b["ar.link_type_id"] = [str(link_type_id)]
+        for k, v in attributes.items():
+            self.b["ar.attrs."+k] = v
+        self.b["ar.edit_note"] = edit_note.encode('utf8')
+        try: self.b["ar.as_auto_editor"] = ["1"] if auto else []
+        except mechanize.ControlNotFoundError: pass
+        self.b.submit()
+        page = self.b.response().read()
+        if "Thank you, your edit has been" not in page:
+            if "exists with these attributes" not in page:
                 raise Exception('unable to post edit')
 
     def edit_relationship(self, rel_id, entity0_type, entity1_type, old_link_type_id, new_link_type_id, attributes, edit_note, auto=False):
