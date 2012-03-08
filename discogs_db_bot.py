@@ -3,45 +3,54 @@ from discogs_db import DiscogsDbClient
 import config as cfg
 import argparse
 
-doClient = DiscogsDbClient()
-
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='A Discogs DB bot')
-    parser.add_argument('-a', action='store_true', help='Create artist link table (discogs_db_artist_link)')
-    parser.add_argument('-al', type=int, help='Commit artist links to MusicBrainz, where AL is max number of commits')
-    parser.add_argument('-al2', type=int, help='Commit artist links to MusicBrainz, where AL2 is max number of commits')
-    parser.add_argument('-artist_types', type=int, help='Commit artist types based on disambiguation comments')
-    parser.add_argument('-d', action='store_true', help='Discogs additional tables (release_track_count)')
-    parser.add_argument('-f', action='store_true', help='Create functions')
-    parser.add_argument('-l', action='store_true', help='Create link tables (after data updates)')
-    parser.add_argument('-r', action='store_true', help='Create release link table (discogs_db_release_link)')
-    parser.add_argument('-rl', type=int, help='Commit release links to MusicBrainz, where RL is max number of commits')
-    parser.add_argument('-rarl', type=int, help='Commit release artist relationships to MusicBrainz, where RARL is max number of commits')
+    parser = argparse.ArgumentParser(description='A Discogs DB bot', formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument('-l', type=int, help='Set limit of commits. Default 100', default=100)
+    parser.add_argument('-a', type=str,
+        choices=('create_functions','create_tables','do_links','do_release_links',
+                'do_artist_links','commit_artist_links','commit_artist2_links',
+                'commit_artist_types','commit_release_links','commit_release_credits'),
+        help='''Action
+Initial actions:
+create_functions            Create functions
+create_tables               Create additional tables on Discogs database (release_track_count)
+Actions after database update:
+do_links                    Create link tables (after data updates)
+do_release_links            Create release link table (discogs_db_release_link)
+do_artist_links             Create artist link table (discogs_db_artist_link)
+Commit actions:
+commit_artist_links         Commit artist links to MusicBrainz
+commit_artist2_links        Commit VA release track artist links to MusicBrainz
+commit_artist_types         Commit artist types based on disambiguation comments
+commit_release_links        Commit release links to MusicBrainz
+commit_release_credits      Commit release artist relationships to MusicBrainz''')
     args = parser.parse_args()
-    if (args.a):
-        doClient.artist_link_table()
-        print "artist links table done!"
-    elif (args.al):
-        doClient.commit_artist_links(args.al)
-    elif (args.al2):
-        doClient.commit_artist_links2(args.al2)
-    elif (args.artist_types):
-        doClient.commit_artist_types(args.artist_types)
-    elif (args.d):
-        doClient.create_track_count()
-        print "Discogs additional tables done!"
-    elif (args.f):
-        doClient.createfunctions()
-        print "functions done!"
-    elif (args.l):
-        doClient.createlinks()
-        print "links done!"
-    elif (args.r):
-        doClient.release_link_table()
-        print "release links table done!"
-    elif (args.rl):
-        doClient.commit_release_links(args.rl)
-    elif (args.rarl):
-        doClient.commit_release_artist_relationship(args.rarl)
+    if args.a:
+        doClient = DiscogsDbClient()
+        if args.a == 'create_functions':
+            doClient.createfunctions()
+            print "functions done!"
+        elif args.a == 'create_tables':
+            doClient.create_track_count()
+            print "create tables done!"
+        elif args.a == 'do_links':
+            doClient.createlinks()
+            print "links done!"
+        elif args.a == 'do_release_links':
+            doClient.release_link_table()
+            print "release links done!"
+        elif args.a == 'do_artist_links':
+            doClient.artist_link_table()
+            print "artist links done!"
+        elif args.a == 'commit_artist_links':
+            doClient.commit_artist_links(args.l)
+        elif args.a == 'commit_artist2_links':
+            doClient.commit_artist_links2(args.l)
+        elif args.a == 'commit_artist_types':
+            doClient.commit_artist_types(args.l)
+        elif args.a == 'commit_release_links':
+            doClient.commit_release_links(args.l)
+        elif args.a == 'commit_release_credits':
+            doClient.commit_release_artist_relationship(args.l)
     else:
         parser.print_help()
