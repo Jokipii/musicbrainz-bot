@@ -6,7 +6,7 @@ import argparse
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A Discogs DB bot', formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('-l', type=int, help='Set limit of commits. Default 100', default=100)
-    parser.add_argument('-a', type=str,
+    parser.add_argument('-a', type=str, required=True,
         choices=('create_functions','create_tables','do_links','do_release_links',
                 'do_artist_links','commit_artist_links','commit_artist2_links',
                 'commit_artist_types','commit_release_links','commit_release_credits'),
@@ -14,6 +14,8 @@ if __name__ == '__main__':
 Initial actions:
 create_functions            Create functions
 create_tables               Create additional tables on Discogs database (release_track_count)
+create_views                Create views on MB database (do_artist_link, do_label_link, 
+                                do_release_group_link, do_release_link)
 Actions after database update:
 do_links                    Create link tables (after data updates)
 do_release_links            Create release link table (discogs_db_release_link)
@@ -32,6 +34,9 @@ commit_release_credits      Commit release artist relationships to MusicBrainz''
             print "functions done!"
         elif args.a == 'create_tables':
             doClient.create_track_count()
+            print "create tables done!"
+        elif args.a == 'create_views':
+            doClient.create_link_views()
             print "create tables done!"
         elif args.a == 'do_links':
             doClient.createlinks()

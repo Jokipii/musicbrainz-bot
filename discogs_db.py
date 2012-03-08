@@ -7,12 +7,10 @@ class DiscogsDbClient(object):
     
     def __init__(self):
         self.mbengine = sqlalchemy.create_engine(cfg.MB_DB)
-        self.mbdb = self.mbengine.connect()
         self.doengine = sqlalchemy.create_engine(cfg.DO_DB)
-        self.dodb = self.doengine.connect()
 
     def commit_artist_links(self, limit):
-        mbClient = MusicBrainzClient(cfg.MB_USERNAME, cfg.MB_PASSWORD, cfg.MB_SITE)
+        mbClient = self.open(do=True, client=True)
         queryLinks = "SELECT artist_gid, url, releases FROM discogs_db_artist_link LIMIT %s"
         queryDelete = "DELETE FROM discogs_db_artist_link WHERE artist_gid = %s"
         for gid, url, releases in self.dodb.execute(queryLinks, limit):
@@ -21,27 +19,30 @@ class DiscogsDbClient(object):
             mbClient.add_url("artist", gid, 180, "http://www.discogs.com/artist/" + url, note)
             self.dodb.execute(queryDelete, gid)
             print url + " Done!"
+        self.close()
 
     def commit_artist_links2(self, limit):
-        mbClient = MusicBrainzClient(cfg.MB_USERNAME, cfg.MB_PASSWORD, cfg.MB_SITE)
+        mbClient = self.open(do=True, client=True)
         queryLinks = "SELECT artist_gid, url, releases FROM discogs_db_artist_link2 LIMIT %s"
         queryDelete = "DELETE FROM discogs_db_artist_link2 WHERE artist_gid = %s"
         for gid, url, releases in self.dodb.execute(queryLinks, limit):
             mbClient.add_url("artist", gid, 180, url, releases)
             self.dodb.execute(queryDelete, gid)
             print url + " Done!"
+        self.close()
 
     def commit_release_links(self, limit):
-        mbClient = MusicBrainzClient(cfg.MB_USERNAME, cfg.MB_PASSWORD, cfg.MB_SITE)
+        mbClient = self.open(do=True, client=True)
         queryLinks = "SELECT gid, url, note FROM discogs_db_release_link LIMIT %s"
         queryDelete = "DELETE FROM discogs_db_release_link WHERE gid = %s"
         for gid, url, note in self.dodb.execute(queryLinks, limit):
             mbClient.add_url("release", gid, 76, url, note)
             self.dodb.execute(queryDelete, gid)
             print url + " Done!"
+        self.close()
 
     def commit_release_artist_relationship(self, limit):
-        mbClient = MusicBrainzClient(cfg.MB_USERNAME, cfg.MB_PASSWORD, cfg.MB_SITE)
+        mbClient = self.open(do=True, client=True)
         queryLinks = "SELECT release_gid, release_url, artist_gid, artist_url FROM do_release_artist_credits LIMIT %s"
         queryDelete = "DELETE FROM do_release_artist_credits WHERE release_gid = %s AND artist_gid = %s"
         for release_gid, release_url, artist_gid, artist_url in self.mbdb.execute(queryLinks, limit):
@@ -49,9 +50,10 @@ class DiscogsDbClient(object):
             mbClient.add_relationship("artist", "release", artist_gid, release_gid, 30, {}, note)
             self.mbdb.execute(queryDelete, release_gid, artist_gid)
             print release_gid + " " + artist_gid + " Done!"
+        self.close()
 
     def commit_artist_types(self, limit):
-        mbClient = MusicBrainzClient(cfg.MB_USERNAME, cfg.MB_PASSWORD, cfg.MB_SITE)
+        mbClient = self.open(mb=True, client=True)
         query1 = """
 SELECT DISTINCT artist.gid, 'Singer/actor/producer/composer/conductor/dj in disambiguation comment' AS note
 FROM artist
@@ -83,11 +85,12 @@ WHERE type ISNULL AND lower(comment) LIKE ANY(array[
 '%% ensemble','%% ensemble %%','ensemble %%'
 ])
 AND NOT lower(comment) LIKE ANY(array[
-'%%unknown%%','%%artist%band%%','%%performed%%','%%feat%%','%%artist%%group%%','%%composer%%'
+'%%unknown%%','%%artist%%band%%','%%performed%%','%%feat%%','%%artist%%group%%','%%composer%%'
 ])
 LIMIT %s
 """
         self.commit_artist_type(query2, limit, 2, mbClient)
+        self.close()
 
     def commit_artist_type(self, query, limit, type, mbClient):
         for gid, note in self.mbdb.execute(query, limit):
@@ -95,54 +98,14 @@ LIMIT %s
             print gid + " Done!"
 
     def createlinks(self):
-        mbquery = """
-DROP TABLE IF EXISTS do_release_link, do_release_group_link, do_artist_link, do_label_link;
--- release: links
-SELECT release.id, release_name.name, release.gid, url.url
-INTO do_release_link FROM link
-JOIN l_release_url ON  l_release_url.link = link.id
-JOIN url ON l_release_url.entity1 = url.id
-JOIN release ON l_release_url.entity0 = release.id
-JOIN release_name ON release.name = release_name.id
-WHERE link.link_type = 76
-AND url.url LIKE '%%discogs.com/release/%%';
-
--- release group: links
-SELECT release_group.id, release_name.name, release_group.gid, url.url
-INTO do_release_group_link FROM link
-JOIN l_release_group_url ON l_release_group_url.link = link.id
-JOIN url ON l_release_group_url.entity1 = url.id
-JOIN release_group ON l_release_group_url.entity0 = release_group.id
-JOIN release_name ON release_group.name = release_name.id
-WHERE link.link_type = 90
-AND url.url LIKE '%%discogs.com/master/%%';
-
--- artist: links
-SELECT artist.id, artist_name.name, artist.gid, url.url
-INTO do_artist_link FROM link
-JOIN l_artist_url ON l_artist_url.link = link.id
-JOIN url ON l_artist_url.entity1 = url.id
-JOIN artist ON l_artist_url.entity0 = artist.id
-JOIN artist_name ON artist.name = artist_name.id
-WHERE link.link_type = 180
-AND url.url LIKE '%%discogs.com/artist/%%';
-
--- label: links
-SELECT label.id, label_name.name, label.gid, url.url
-INTO do_label_link FROM link
-JOIN l_label_url ON l_label_url.link = link.id
-JOIN url ON l_label_url.entity1 = url.id
-JOIN label ON l_label_url.entity0 = label.id
-JOIN label_name ON label.name = label_name.id
-WHERE link.link_type = 217
-AND url.url LIKE '%%discogs.com/label/%%';
-"""
+        self.open(do=True)
         doquery = """
 DROP TABLE IF EXISTS mb_release_link, mb_release_group_link, mb_artist_link, mb_label_link;
 
 SELECT t1.gid, t1.name, t1.url, decodeURL(t1.url, 'http://www.discogs.com/release/')::integer AS id2 
 INTO mb_release_link 
-FROM dblink(:dblink, 'SELECT gid, name, url FROM do_release_link') AS t1(gid uuid, name text, url text);
+FROM dblink(:dblink, 'SELECT gid, name, url FROM do_release_link WHERE url LIKE ''http://www.discogs.com/release/''')
+AS t1(gid uuid, name text, url text);
 ALTER TABLE mb_release_link ADD COLUMN id integer;
 UPDATE mb_release_link SET id = release.id FROM release WHERE id2 = release.id;
 DELETE FROM mb_release_link WHERE id IS NULL;
@@ -150,7 +113,8 @@ ALTER TABLE mb_release_link DROP COLUMN id2;
 
 SELECT t1.gid, t1.name, t1.url, decodeURL(t1.url, 'http://www.discogs.com/master/')::integer AS id2 
 INTO mb_release_group_link 
-FROM dblink(:dblink, 'SELECT gid, name, url FROM do_release_group_link') AS t1(gid uuid, name text, url text);
+FROM dblink(:dblink, 'SELECT gid, name, url FROM do_release_group_link WHERE url LIKE ''http://www.discogs.com/master/''')
+AS t1(gid uuid, name text, url text);
 ALTER TABLE mb_release_group_link ADD COLUMN id integer;
 UPDATE mb_release_group_link SET id = master.id FROM master WHERE id2 = master.id;
 DELETE FROM mb_release_group_link WHERE id IS NULL;
@@ -172,18 +136,21 @@ UPDATE mb_label_link SET id = label.id FROM label WHERE id2 = lower(label.name);
 DELETE FROM mb_label_link WHERE id IS NULL;
 ALTER TABLE mb_label_link DROP COLUMN id2;
 """
-        self.mbdb.execute(mbquery)
         self.dodb.execute(text(doquery), dblink=cfg.MB_DB_LINK)
+        self.close()
 
     def create_track_count(self):
+        self.open(do=True)
         doquery = """
 SELECT release_id, COUNT(track_id)
 INTO release_track_count FROM track
 GROUP BY release_id;
 """
         self.dodb.execute(doquery)
+        self.close()
 
     def createfunctions(self):
+        self.open(do=True)
         doquery = """
 -- function to decode url
 CREATE OR REPLACE FUNCTION decodeUrl(url text, remove text)
@@ -220,8 +187,56 @@ UPDATE release SET country = 'United States' WHERE country = 'US';
 UPDATE release SET country = 'United Kingdom' WHERE country = 'UK';
 """
         self.dodb.execute(doquery)
+        self.close()
+
+    def create_link_views(self):
+        self.open(mb=True)
+        mbquery = """
+DROP INDEX IF EXISTS l_release_url_idx_discogs, l_release_group_url_idx_discogs, l_label_url_idx_discogs, l_artist_url_idx_discogs;
+
+--discogs link for "release":6301, "release_group":6309, "artist":26038, "label":27037
+CREATE INDEX l_release_url_idx_discogs ON l_release_url(link) WHERE link = 6301;
+CREATE INDEX l_release_group_url_idx_discogs ON l_release_group_url(link) WHERE link = 6309;
+CREATE INDEX l_label_url_idx_discogs ON l_label_url(link) WHERE link = 27037;
+CREATE INDEX l_artist_url_idx_discogs ON l_artist_url(link) WHERE link = 26038;
+
+CREATE OR REPLACE VIEW do_release_link AS
+SELECT release.id, release_name.name, release.gid, url.url
+FROM l_release_url
+JOIN url ON l_release_url.entity1 = url.id
+JOIN release ON l_release_url.entity0 = release.id
+JOIN release_name ON release.name = release_name.id
+WHERE l_release_url.link = 6301;
+
+CREATE OR REPLACE VIEW do_release_group_link AS
+SELECT release_group.id, release_name.name, release_group.gid, url.url
+FROM l_release_group_url
+JOIN url ON l_release_group_url.entity1 = url.id
+JOIN release_group ON l_release_group_url.entity0 = release_group.id
+JOIN release_name ON release_group.name = release_name.id
+WHERE l_release_group_url.link = 6309;
+
+CREATE OR REPLACE VIEW do_label_link AS
+SELECT label.id, label_name.name, label.gid, url.url
+FROM l_label_url
+JOIN url ON l_label_url.entity1 = url.id
+JOIN label ON l_label_url.entity0 = label.id
+JOIN label_name ON label.name = label_name.id
+WHERE l_label_url.link = 27037;
+
+CREATE OR REPLACE VIEW do_artist_link AS
+SELECT artist.id, artist_name.name, artist.gid, url.url
+FROM l_artist_url
+JOIN url ON l_artist_url.entity1 = url.id
+JOIN artist ON l_artist_url.entity0 = artist.id
+JOIN artist_name ON artist.name = artist_name.id
+WHERE l_artist_url.link = 26038;
+"""
+        self.mbdb.execute(mbquery)
+        self.close()
 
     def release_link_table(self):
+        self.open(do=True, mb=True)
         mbquery = """
 DROP TABLE IF EXISTS do_release_link_catno;
 -- all releases linked to linked labels that have catalog_number
@@ -311,8 +326,10 @@ DROP TABLE IF EXISTS rel_catno;
         self.mbdb.execute(mbquery)
         self.dodb.execute(text(doquery), dblink=cfg.MB_DB_LINK)
         self.mbdb.execute(mbquery_cleanup)
+        self.close()
 
     def artist_link_table(self):
+        self.open(do=True, mb=True)
         mbquery = """
 -- releases linked to Discogs with artist not linked to Discogs
 DROP TABLE IF EXISTS do_artist_releases;
@@ -393,3 +410,14 @@ DROP TABLE IF EXISTS possible_artist_mblink2, possible_artist_mblink3, mb_artist
         self.mbdb.execute(mbquery)
         self.dodb.execute(text(doquery), dblink=cfg.MB_DB_LINK)
         #self.mbdb.execute(mbquery_cleanup)
+        self.close()
+
+    def open(self, mb=False, do=False, client=False):
+        if mb: self.mbdb = self.mbengine.connect()
+        if do: self.dodb = self.doengine.connect()
+        if client: return MusicBrainzClient(cfg.MB_USERNAME, cfg.MB_PASSWORD, cfg.MB_SITE)
+        return None
+
+    def close(self):
+        if hasattr(self, 'mbdb'): self.mbdb.close()
+        if hasattr(self, 'dodb'): self.dodb.close()
