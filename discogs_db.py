@@ -63,6 +63,9 @@ WHERE type ISNULL AND lower(comment) LIKE ANY(array[
 '%% conductor','%% conductor %%','conductor %%',
 '%% dj','%% dj %%','dj %%'
 ])
+AND NOT lower(comment) LIKE ANY(array[
+'%%unknown%%','%%feat%%'
+])
 LIMIT %s
  """
         self.commit_artist_type(query1, limit, 1, mbClient)
@@ -78,6 +81,9 @@ WHERE type ISNULL AND lower(comment) LIKE ANY(array[
 '%% duet','%% duet %%','duet %%',
 '%% orchestra','%% orchestra %%','orchestra %%',
 '%% ensemble','%% ensemble %%','ensemble %%'
+])
+AND NOT lower(comment) LIKE ANY(array[
+'%%unknown%%','%%artist%band%%','%%performed%%','%%feat%%','%%artist%%group%%','%%composer%%'
 ])
 LIMIT %s
 """
