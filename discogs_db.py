@@ -439,7 +439,7 @@ WITH mb_recordings2 AS (
     FROM mb_recordings2
     GROUP BY artist_gid, artist_name
 )
-INSERT INTO discogs_db_artist_link (artist_gid, url, releases)
+INSERT INTO discogs_db_artist_link2 (artist_gid, url, releases)
 SELECT artist_gid, url, releases FROM mb_recordings3
 EXCEPT
 SELECT artist_gid, url, releases FROM discogs_db_artist_link
