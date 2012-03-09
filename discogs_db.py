@@ -389,6 +389,67 @@ DROP TABLE IF EXISTS possible_artist_mblink2, possible_artist_mblink3, mb_artist
         #self.mbdb.execute(mbquery_cleanup)
         self.close()
 
+    def artist_link_table2(self):
+        self.open(do=True, mb=True)
+        mbquery = """
+DROP TABLE IF EXISTS do_recordings;
+WITH recordings AS (
+    SELECT DISTINCT do_release_link.url, do_release_link.name AS release_name, do_release_link.gid as release_gid, 
+        track_name.name AS track_name, recording.gid AS recording_gid, artist_name.name AS artist_name, artist.gid AS artist_gid 
+    FROM do_release_link
+    JOIN release ON release.id = do_release_link.id 
+    JOIN medium ON medium.release = release.id
+    JOIN tracklist ON medium.tracklist = tracklist.id
+    JOIN track ON track.tracklist = tracklist.id
+    JOIN recording ON track.recording = recording.id
+    JOIN artist_credit ON recording.artist_credit = artist_credit.id
+    JOIN artist_credit_name ON artist_credit_name.artist_credit = artist_credit.id
+    JOIN artist_name ON artist_credit_name.name = artist_name.id
+    JOIN artist ON artist_credit_name.artist = artist.id
+    JOIN track_name ON recording.name = track_name.id
+    WHERE release.artist_credit = 1
+    AND artist_credit.artist_count = 1
+)
+SELECT * 
+INTO do_recordings
+FROM recordings
+WHERE artist_gid NOT IN (SELECT gid FROM do_artist_link);
+"""
+        doquery = """
+WITH mb_recordings2 AS (
+    WITH mb_recordings AS (
+        SELECT DISTINCT decodeURL(t1.url, 'http://www.discogs.com/release/') AS release_id, t1.*  
+        FROM dblink(:dblink, 'SELECT url, release_name, release_gid, track_name, recording_gid, artist_name, artist_gid FROM do_recordings')
+        AS t1(url text, release_name text, release_gid uuid, track_name text, recording_gid uuid, artist_name text, artist_gid uuid)
+    )
+    SELECT DISTINCT mb_recordings.artist_name, artist_gid, 'Recording: ' || track_name 
+    || ' by ' || mb_recordings.artist_name || ' in release "' || release_name 
+    || '": http://musicbrainz.org/release/' || release_gid || 
+    ' is linked to Discogs release ' || url || ' Track credits points to same artist' AS note
+    FROM mb_recordings
+    JOIN track ON mb_recordings.release_id = track.release_id::text
+    JOIN tracks_artists ON tracks_artists.track_id = track.track_id
+    WHERE mb_recordings.track_name = track.title
+    AND mb_recordings.artist_name = tracks_artists.artist_name
+), mb_recordings3 AS (
+    SELECT artist_gid, 'http://www.discogs.com/artist/' || url (artist_name) AS url, 'Artist "' 
+    || artist_name || '" with exact match on name found on Discogs.
+    ' || string_agg(note, ',
+    ') AS releases
+    FROM mb_recordings2
+    GROUP BY artist_gid, artist_name
+)
+INSERT INTO discogs_db_artist_link (artist_gid, url, releases)
+SELECT artist_gid, url, releases FROM mb_recordings3
+EXCEPT
+SELECT artist_gid, url, releases FROM discogs_db_artist_link
+ORDER BY url;
+"""
+        self.mbdb.execute(mbquery)
+        print 'MB side done!'
+        self.dodb.execute(text(doquery), dblink=cfg.MB_DB_LINK)
+        self.close()
+
     def release_artist_link_table(self):
         self.open(do=True, mb=True)
         doquery = """
@@ -417,15 +478,15 @@ WITH do_rac AS (
     WHERE 'Producer' = ANY(roles)
 ),
 included AS (
-	SELECT do_rac.artist_gid, do_rac.release_gid FROM do_rac
-	EXCEPT
-	SELECT artist.gid AS artist_gid, release.gid AS release_gid
-	FROM link_type 
-	JOIN link ON link.link_type = link_type.id
-	JOIN l_artist_release ON l_artist_release.link = link.id
-	JOIN artist ON l_artist_release.entity0 = artist.id
-	JOIN release ON l_artist_release.entity1 = release.id
-	WHERE link_type.name = 'producer'
+    SELECT do_rac.artist_gid, do_rac.release_gid FROM do_rac
+    EXCEPT
+    SELECT artist.gid AS artist_gid, release.gid AS release_gid
+    FROM link_type 
+    JOIN link ON link.link_type = link_type.id
+    JOIN l_artist_release ON l_artist_release.link = link.id
+    JOIN artist ON l_artist_release.entity0 = artist.id
+    JOIN release ON l_artist_release.entity1 = release.id
+    WHERE link_type.name = 'producer'
 )
 SELECT do_rac.*
 INTO do_release_artist_credits
