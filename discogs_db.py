@@ -104,7 +104,7 @@ DROP TABLE IF EXISTS mb_release_link, mb_release_group_link, mb_artist_link, mb_
 
 SELECT t1.gid, t1.name, t1.url, decodeURL(t1.url, 'http://www.discogs.com/release/')::integer AS id2 
 INTO mb_release_link 
-FROM dblink(:dblink, 'SELECT gid, name, url FROM do_release_link WHERE url LIKE ''http://www.discogs.com/release/''')
+FROM dblink(:dblink, 'SELECT gid, name, url FROM do_release_link WHERE url LIKE ''http://www.discogs.com/release/%%''')
 AS t1(gid uuid, name text, url text);
 ALTER TABLE mb_release_link ADD COLUMN id integer;
 UPDATE mb_release_link SET id = release.id FROM release WHERE id2 = release.id;
@@ -113,7 +113,7 @@ ALTER TABLE mb_release_link DROP COLUMN id2;
 
 SELECT t1.gid, t1.name, t1.url, decodeURL(t1.url, 'http://www.discogs.com/master/')::integer AS id2 
 INTO mb_release_group_link 
-FROM dblink(:dblink, 'SELECT gid, name, url FROM do_release_group_link WHERE url LIKE ''http://www.discogs.com/master/''')
+FROM dblink(:dblink, 'SELECT gid, name, url FROM do_release_group_link WHERE url LIKE ''http://www.discogs.com/master/%%''')
 AS t1(gid uuid, name text, url text);
 ALTER TABLE mb_release_group_link ADD COLUMN id integer;
 UPDATE mb_release_group_link SET id = master.id FROM master WHERE id2 = master.id;
@@ -152,7 +152,6 @@ GROUP BY release_id;
     def createfunctions(self):
         self.open(do=True)
         doquery = """
--- function to decode url
 CREATE OR REPLACE FUNCTION decodeUrl(url text, remove text)
   RETURNS text
 AS $$
@@ -162,7 +161,6 @@ AS $$
   return result[len(remove):]
 $$ LANGUAGE plpython3u;
 
--- function to encode name to discogs url
 CREATE OR REPLACE FUNCTION url(name text)
   RETURNS text
 AS $$
@@ -172,7 +170,6 @@ AS $$
   return encoded
 $$ LANGUAGE plpython3u;
 
--- function that return artist name without possible " (n)" number in end
 CREATE OR REPLACE FUNCTION artist_name(name text)
   RETURNS text
 AS $$
@@ -182,7 +179,6 @@ AS $$
   return result.group(1)
 $$ LANGUAGE plpython3u;
 
--- change some release countries so they can be matched
 UPDATE release SET country = 'United States' WHERE country = 'US';
 UPDATE release SET country = 'United Kingdom' WHERE country = 'UK';
 """
@@ -194,7 +190,6 @@ UPDATE release SET country = 'United Kingdom' WHERE country = 'UK';
         mbquery = """
 DROP INDEX IF EXISTS l_release_url_idx_discogs, l_release_group_url_idx_discogs, l_label_url_idx_discogs, l_artist_url_idx_discogs;
 
---discogs link for "release":6301, "release_group":6309, "artist":26038, "label":27037
 CREATE INDEX l_release_url_idx_discogs ON l_release_url(link) WHERE link = 6301;
 CREATE INDEX l_release_group_url_idx_discogs ON l_release_group_url(link) WHERE link = 6309;
 CREATE INDEX l_label_url_idx_discogs ON l_label_url(link) WHERE link = 27037;
@@ -239,7 +234,6 @@ WHERE l_artist_url.link = 26038;
         self.open(do=True, mb=True)
         mbquery = """
 DROP TABLE IF EXISTS do_release_link_catno;
--- all releases linked to linked labels that have catalog_number
 SELECT do_label_link.name AS label_name, do_label_link.gid AS label_gid, release_label.catalog_number, release.gid, 
 release_name.name, tracklist.track_count, medium_format.name AS format, country.name AS country
 INTO do_release_link_catno
@@ -253,10 +247,8 @@ JOIN tracklist ON medium.tracklist = tracklist.id
 LEFT JOIN medium_format ON medium.format = medium_format.id
 WHERE release_label.catalog_number NOTNULL;
 
--- delete releases that are already linked to discogs
 DELETE FROM do_release_link_catno USING do_release_link WHERE do_release_link_catno.gid = do_release_link.gid;
 
--- delete releases with non unique catalog numbers
 DELETE FROM do_release_link_catno WHERE catalog_number IN (
   SELECT catalog_number FROM do_release_link_catno
   GROUP BY catalog_number
@@ -267,7 +259,6 @@ DELETE FROM do_release_link_catno WHERE catalog_number IN (
         doquery = """
 DROP TABLE IF EXISTS rel_catno, discogs_db_release_link;
 
--- find releases that are releted to same label and have same catalog_number
 WITH mb_release_link_catno AS (
     SELECT DISTINCT t1.* FROM dblink(:dblink, 'SELECT label_gid, label_name, catalog_number, gid, name, track_count, format, country FROM do_release_link_catno')
     AS t1(label_gid uuid, label_name text, catalog_number text, gid uuid, name text, track_count integer, format text, country text)
@@ -280,12 +271,10 @@ JOIN label ON mb_label_link.id = label.id
 JOIN releases_labels ON label.name = releases_labels.label
 WHERE releases_labels.catno = mb_release_link_catno.catalog_number;
 
--- change some formats so they can be matched
 UPDATE rel_catno SET format = 'File' WHERE format = 'Digital Media';
 UPDATE rel_catno SET format = 'Minidisc' WHERE format = 'MiniDisc';
 UPDATE rel_catno SET format = 'CDr' WHERE format = 'CR-R';
 
--- remove releases with non unique catalog_numbers
 DELETE FROM rel_catno
 WHERE catalog_number IN (
   SELECT catalog_number FROM rel_catno
@@ -293,7 +282,6 @@ WHERE catalog_number IN (
   HAVING (COUNT(catalog_number) > 1)
 );
 
--- remove releases with non unique gid
 DELETE FROM rel_catno
 WHERE gid IN (
   SELECT gid FROM rel_catno
@@ -324,6 +312,7 @@ ORDER BY label_name;
 DROP TABLE IF EXISTS rel_catno;
 """
         self.mbdb.execute(mbquery)
+        print 'MB side done!'
         self.dodb.execute(text(doquery), dblink=cfg.MB_DB_LINK)
         self.mbdb.execute(mbquery_cleanup)
         self.close()
@@ -331,30 +320,22 @@ DROP TABLE IF EXISTS rel_catno;
     def artist_link_table(self):
         self.open(do=True, mb=True)
         mbquery = """
--- releases linked to Discogs with artist not linked to Discogs
 DROP TABLE IF EXISTS do_artist_releases;
--- all releases with Discogs link expanded to artist_credits where only one artist is credited
 SELECT do_release_link.id AS release_id, do_release_link.gid AS release_gid, do_release_link.name AS release_name, 
 do_release_link.url AS release_url, artist.id AS artist_id, artist.gid AS artist_gid, artist_name.name AS artist_name
-INTO do_artist_releases FROM do_release_link
+INTO do_artist_releases
+FROM do_release_link
 JOIN release ON do_release_link.id = release.id
 JOIN artist_credit ON release.artist_credit = artist_credit.id
 JOIN artist_name ON artist_credit.name = artist_name.id
 JOIN artist_credit_name ON artist_credit_name.artist_credit = artist_credit.id
 JOIN artist ON artist_credit_name.artist = artist.id
-WHERE artist_credit.artist_count = 1;
-
--- delete artists that are already linked to Discogs
-DELETE FROM do_artist_releases
-WHERE artist_id 
-IN (SELECT artist.id FROM l_artist_url 
-    JOIN artist ON l_artist_url.entity0 = artist.id
-    JOIN link ON l_artist_url.link = link.id
-    WHERE link.link_type = 180);
+WHERE artist_credit.artist_count = 1
+AND artist.id > 1
+AND artist.id NOT IN (SELECT id FROM do_artist_link);
 """
         mbquery_cleanup = "DROP TABLE IF EXISTS do_artist_releases"
         doquery = """
--- artist links
 DROP TABLE IF EXISTS mb_artist_releases;
 
 SELECT DISTINCT t1.* 
@@ -362,10 +343,6 @@ INTO mb_artist_releases
 FROM dblink(:dblink, 'SELECT release_id, release_gid, release_name, release_url, artist_id, artist_gid, artist_name FROM do_artist_releases')
 AS t1(release_id integer, release_gid uuid, release_name text, release_url text, artist_id integer, artist_gid uuid, artist_name text);
 
--- remove 'Various Artists' links
-DELETE FROM mb_artist_releases WHERE artist_id = 1;
-
--- delete all that have multiple entries
 DELETE FROM mb_artist_releases
 WHERE release_gid IN (
   SELECT release_gid FROM mb_artist_releases
@@ -385,7 +362,6 @@ WHERE artist.name!='Various';
 
 DROP TABLE IF EXISTS possible_artist_mblink3;
 
--- one to one mapped with exact name match
 SELECT * INTO possible_artist_mblink3 FROM possible_artist_mblink2
 WHERE artist_gid IN (
   SELECT artist_gid FROM possible_artist_mblink2
@@ -397,7 +373,7 @@ DROP TABLE IF EXISTS mb_artist_releases2;
 SELECT *, release_name || ': http://musicbrainz.org/release/' || release_gid AS rel INTO mb_artist_releases2 FROM mb_artist_releases;
 
 DROP TABLE IF EXISTS discogs_db_artist_link;
--- possible artis links
+
 SELECT possible_artist_mblink3.artist_gid, url(possible_artist_mblink3.discogs_artist_name), 
 (SELECT string_agg(mb_artist_releases2.rel,' , ') 
 FROM mb_artist_releases2 
@@ -408,8 +384,57 @@ FROM possible_artist_mblink3;
 DROP TABLE IF EXISTS possible_artist_mblink2, possible_artist_mblink3, mb_artist_releases, mb_artist_releases2;
 """
         self.mbdb.execute(mbquery)
+        print 'MB side done!'
         self.dodb.execute(text(doquery), dblink=cfg.MB_DB_LINK)
         #self.mbdb.execute(mbquery_cleanup)
+        self.close()
+
+    def release_artist_link_table(self):
+        self.open(do=True, mb=True)
+        doquery = """
+DROP TABLE IF EXISTS mb_release_artist_credits;
+
+SELECT mb_release_link.gid AS release_gid, mb_release_link.url AS release_url, mb_artist_link.gid AS artist_gid, mb_artist_link.url AS artist_url, releases_extraartists.roles
+INTO mb_release_artist_credits
+FROM mb_release_link
+JOIN releases_extraartists ON mb_release_link.id = releases_extraartists.release_id
+JOIN artist ON releases_extraartists.artist_id = artist.id
+JOIN mb_artist_link ON mb_artist_link.id = artist.id;
+
+DELETE FROM mb_release_artist_credits WHERE release_gid IN
+(SELECT gid FROM mb_release_link GROUP BY gid HAVING count(gid) > 1);
+
+DELETE FROM mb_release_artist_credits WHERE artist_gid IN
+(SELECT gid FROM mb_artist_link GROUP BY gid HAVING count(gid) > 1);
+"""
+        mbquery = """
+DROP TABLE IF EXISTS do_release_artist_credits;
+
+WITH do_rac AS (
+    SELECT *
+    FROM dblink(:dblink, 'SELECT release_gid, release_url, artist_gid, artist_url, roles FROM mb_release_artist_credits')
+    AS t1(release_gid uuid, release_url text, artist_gid uuid, artist_url text, roles text[])
+    WHERE 'Producer' = ANY(roles)
+),
+included AS (
+	SELECT do_rac.artist_gid, do_rac.release_gid FROM do_rac
+	EXCEPT
+	SELECT artist.gid AS artist_gid, release.gid AS release_gid
+	FROM link_type 
+	JOIN link ON link.link_type = link_type.id
+	JOIN l_artist_release ON l_artist_release.link = link.id
+	JOIN artist ON l_artist_release.entity0 = artist.id
+	JOIN release ON l_artist_release.entity1 = release.id
+	WHERE link_type.name = 'producer'
+)
+SELECT do_rac.*
+INTO do_release_artist_credits
+FROM do_rac
+JOIN included ON included.artist_gid = do_rac.artist_gid AND included.release_gid = do_rac.release_gid;
+"""
+        self.dodb.execute(doquery)
+        print 'Discogs side done!'
+        self.mbdb.execute(text(mbquery), dblink=cfg.DO_DB_LINK)
         self.close()
 
     def open(self, mb=False, do=False, client=False):

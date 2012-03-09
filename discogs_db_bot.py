@@ -7,8 +7,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A Discogs DB bot', formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('-l', type=int, help='Set limit of commits. Default 100', default=100)
     parser.add_argument('-a', type=str, required=True,
-        choices=('create_functions','create_tables','do_links','do_release_links',
-                'do_artist_links','commit_artist_links','commit_artist2_links',
+        choices=('create_functions','create_tables','create_views',
+                'do_links','do_release_links','do_artist_links','do_release_credits',
+                'commit_artist_links','commit_artist2_links',
                 'commit_artist_types','commit_release_links','commit_release_credits'),
         help='''Action
 Initial actions:
@@ -20,6 +21,7 @@ Actions after database update:
 do_links                    Create link tables (after data updates)
 do_release_links            Create release link table (discogs_db_release_link)
 do_artist_links             Create artist link table (discogs_db_artist_link)
+do_release_credits          Create release credits link table (discogs_db_release_artist_credits)
 Commit actions:
 commit_artist_links         Commit artist links to MusicBrainz
 commit_artist2_links        Commit VA release track artist links to MusicBrainz
@@ -47,6 +49,8 @@ commit_release_credits      Commit release artist relationships to MusicBrainz''
         elif args.a == 'do_artist_links':
             doClient.artist_link_table()
             print "artist links done!"
+        elif args.a == 'do_release_credits':
+            doClient.release_artist_link_table()
         elif args.a == 'commit_artist_links':
             doClient.commit_artist_links(args.l)
         elif args.a == 'commit_artist2_links':
