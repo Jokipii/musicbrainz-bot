@@ -2,6 +2,7 @@ import config as cfg
 import sqlalchemy
 from sqlalchemy.sql import text
 from editing import MusicBrainzClient
+from datetime import date
 
 class DiscogsDbClient(object):
     
@@ -96,6 +97,36 @@ LIMIT %s
         for gid, note in self.mbdb.execute(query, limit):
             mbClient.set_artist_type(gid, type, note)
             print gid + " Done!"
+
+    def report(self):
+        self.open(mb=True, do=True)
+        print '{|\n! ' + date.today().isoformat()
+        print """! MusicBrainz Total 
+! Discogs Total 
+! Links (all these are not unique) 
+! Percent done (compared to smaller total) 
+|-"""
+        mb = self.mbdb.execute('SELECT COUNT(id) FROM release').fetchone()[0]
+        do = self.dodb.execute('SELECT COUNT(id) FROM release').fetchone()[0]
+        link = self.mbdb.execute('SELECT COUNT(id) FROM do_release_link').fetchone()[0]
+        perc = float(link)/float(mb)*100.0
+        print '! Releases:\n| '+ str(mb) +'\n| '+ str(do) +'\n| '+ str(link) +('\n| %0.f' % perc) +'%\n|-'
+        mb = self.mbdb.execute('SELECT COUNT(id) FROM release_group').fetchone()[0]
+        do = self.dodb.execute('SELECT COUNT(id) FROM master').fetchone()[0]
+        link = self.mbdb.execute('SELECT COUNT(id) FROM do_release_group_link').fetchone()[0]
+        perc = float(link)/float(do)*100.0
+        print '! Release Groups:\n| '+ str(mb) +'\n| '+ str(do) +'\n| '+ str(link) +('\n| %0.f' % perc) +'%\n|-'
+        mb = self.mbdb.execute('SELECT COUNT(id) FROM artist').fetchone()[0]
+        do = self.dodb.execute('SELECT COUNT(id) FROM artist').fetchone()[0]
+        link = self.mbdb.execute('SELECT COUNT(id) FROM do_artist_link').fetchone()[0]
+        perc = float(link)/float(mb)*100.0
+        print '! Artists:\n| '+ str(mb) +'\n| '+ str(do) +'\n| '+ str(link) +('\n| %0.f' % perc) +'%\n|-'
+        mb = self.mbdb.execute('SELECT COUNT(id) FROM label').fetchone()[0]
+        do = self.dodb.execute('SELECT COUNT(id) FROM label').fetchone()[0]
+        link = self.mbdb.execute('SELECT COUNT(id) FROM do_label_link').fetchone()[0]
+        perc = float(link)/float(mb)*100.0
+        print '! Labels:\n| '+ str(mb) +'\n| '+ str(do) +'\n| '+ str(link) +('\n| %0.f' % perc) +'%\n|}'
+        self.close()
 
     def createlinks(self):
         self.open(do=True)
