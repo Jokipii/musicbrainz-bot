@@ -98,6 +98,25 @@ LIMIT %s
             mbClient.set_artist_type(gid, type, note)
             print gid + " Done!"
 
+    def commit_artist_country(self, limit):
+        mbClient = self.open(mb=True, client=True)
+        query = """
+WITH countries AS (
+	SELECT id, array_cat(array[lower(country.iso_code)||' %%', lower(name)||' %%'],country_search.search) AS search FROM country 
+	JOIN country_search ON country.iso_code = country_search.iso_code
+)
+SELECT countries.id AS country_id, s_artist.gid, s_artist.name, comment FROM s_artist
+JOIN countries ON lower(comment) LIKE ANY(search)
+AND country ISNULL
+AND comment NOT LIKE '%%?%%'
+LIMIT %s
+"""
+        for country_id, gid, name, comment in self.mbdb.execute(query, limit):
+            note = "Based on ambiguation comment"
+            mbClient.set_artist_country_id(gid, country_id, note)
+            print gid + " Done!"
+        self.close()
+
     def report(self):
         self.open(mb=True, do=True)
         print '{|\n! ' + date.today().isoformat()
@@ -257,6 +276,73 @@ JOIN url ON l_artist_url.entity1 = url.id
 JOIN artist ON l_artist_url.entity0 = artist.id
 JOIN artist_name ON artist.name = artist_name.id
 WHERE l_artist_url.link = 26038;
+"""
+        self.mbdb.execute(mbquery)
+        self.close()
+
+    def create_country_search_table(self):
+        self.open(mb=True)
+        mbquery = """
+DROP TABLE IF EXISTS country_search;
+CREATE TABLE country_search
+(
+  iso_code character varying(2) NOT NULL,
+  search text[] NOT NULL,
+  CONSTRAINT country_search_pkey PRIMARY KEY (iso_code)
+)
+INSERT INTO country_search VALUES ('AT', array['austrian %']);
+INSERT INTO country_search VALUES ('AU', array['australian %']);
+INSERT INTO country_search VALUES ('BE', array['belgian %']);
+INSERT INTO country_search VALUES ('BR', array['brazilian %']);
+INSERT INTO country_search VALUES ('CA', array['canadian %']);
+INSERT INTO country_search VALUES ('CG', array['republic of the congo %']);
+INSERT INTO country_search VALUES ('CH', array['swiss %']);
+INSERT INTO country_search VALUES ('CN', array['chinese %']);
+INSERT INTO country_search VALUES ('CU', array['cuban %']);
+INSERT INTO country_search VALUES ('CZ', array['czech %']);
+INSERT INTO country_search VALUES ('DE', array['german %']);
+INSERT INTO country_search VALUES ('DK', array['danish %']);
+INSERT INTO country_search VALUES ('DZ', array['algerian %']);
+INSERT INTO country_search VALUES ('EE', array['estonian %']);
+INSERT INTO country_search VALUES ('ES', array['spanish %']);
+INSERT INTO country_search VALUES ('FI', array['finnish %']);
+INSERT INTO country_search VALUES ('FR', array['french %']);
+INSERT INTO country_search VALUES ('GB', array['english %', 'british %','scottish %','welch %']);
+INSERT INTO country_search VALUES ('GR', array['greek %']);
+INSERT INTO country_search VALUES ('HK', array['hong kong %']);
+INSERT INTO country_search VALUES ('HR', array['croatian %']);
+INSERT INTO country_search VALUES ('HU', array['hungarian %']);
+INSERT INTO country_search VALUES ('ID', array['indonesian %']);
+INSERT INTO country_search VALUES ('IE', array['irish %']);
+INSERT INTO country_search VALUES ('IL', array['israeli %']);
+INSERT INTO country_search VALUES ('IS', array['icelandic %']);
+INSERT INTO country_search VALUES ('IT', array['italian %']);
+INSERT INTO country_search VALUES ('JM', array['jamaican %']);
+INSERT INTO country_search VALUES ('JP', array['japanese %']);
+INSERT INTO country_search VALUES ('KR', array['korean %']);
+INSERT INTO country_search VALUES ('LV', array['latvian %']);
+INSERT INTO country_search VALUES ('MX', array['mexican %']);
+INSERT INTO country_search VALUES ('MZ', array['mozambican %']);
+INSERT INTO country_search VALUES ('NL', array['dutch %']);
+INSERT INTO country_search VALUES ('NO', array['norwegian %']);
+INSERT INTO country_search VALUES ('NZ', array['new zealand %']);
+INSERT INTO country_search VALUES ('PH', array['filipino %']);
+INSERT INTO country_search VALUES ('PK', array['pakistani %']);
+INSERT INTO country_search VALUES ('PL', array['polish %']);
+INSERT INTO country_search VALUES ('PL', array['polish %']);
+INSERT INTO country_search VALUES ('PR', array['puerto rican %']);
+INSERT INTO country_search VALUES ('PT', array['portugal %']);
+INSERT INTO country_search VALUES ('RO', array['romanian %']);
+INSERT INTO country_search VALUES ('RU', array['russian %']);
+INSERT INTO country_search VALUES ('SE', array['swedish %']);
+INSERT INTO country_search VALUES ('SG', array['singaporean %']);
+INSERT INTO country_search VALUES ('SI', array['slovenian %']);
+INSERT INTO country_search VALUES ('SK', array['slovak %']);
+INSERT INTO country_search VALUES ('SN', array['senegalese %']);
+INSERT INTO country_search VALUES ('TR', array['turkish %']);
+INSERT INTO country_search VALUES ('UA', array['ukrainian %']);
+INSERT INTO country_search VALUES ('US', array['american %']);
+INSERT INTO country_search VALUES ('ZA', array['south african %']);
 """
         self.mbdb.execute(mbquery)
         self.close()
