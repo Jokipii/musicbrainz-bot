@@ -102,7 +102,7 @@ LIMIT %s
         mbClient = self.open(mb=True, client=True)
         query = """
 WITH countries AS (
-	SELECT id, array_cat(array[lower(name)||' %%'],country_search.search) AS search FROM country 
+	SELECT id, array_cat(array[lower(name)||'%%'],country_search.search) AS search FROM country 
 	LEFT JOIN country_search ON country.iso_code = country_search.iso_code
 )
 SELECT countries.id AS country_id, s_artist.gid, s_artist.name, comment FROM s_artist
@@ -290,58 +290,61 @@ CREATE TABLE country_search
   search text[] NOT NULL,
   CONSTRAINT country_search_pkey PRIMARY KEY (iso_code)
 );
-INSERT INTO country_search VALUES ('AT', array['austrian %']);
-INSERT INTO country_search VALUES ('AU', array['australian %']);
-INSERT INTO country_search VALUES ('BE', array['belgian %']);
-INSERT INTO country_search VALUES ('BR', array['brazilian %']);
-INSERT INTO country_search VALUES ('CA', array['canadian %']);
-INSERT INTO country_search VALUES ('CG', array['republic of the congo %']);
-INSERT INTO country_search VALUES ('CH', array['swiss %']);
-INSERT INTO country_search VALUES ('CN', array['chinese %']);
-INSERT INTO country_search VALUES ('CU', array['cuban %']);
-INSERT INTO country_search VALUES ('CZ', array['czech %']);
-INSERT INTO country_search VALUES ('DE', array['german %']);
-INSERT INTO country_search VALUES ('DK', array['danish %']);
-INSERT INTO country_search VALUES ('DZ', array['algerian %']);
-INSERT INTO country_search VALUES ('EE', array['estonian %']);
-INSERT INTO country_search VALUES ('ES', array['spanish %']);
-INSERT INTO country_search VALUES ('FI', array['finnish %']);
-INSERT INTO country_search VALUES ('FR', array['french %']);
-INSERT INTO country_search VALUES ('GB', array['uk %', 'english %', 'british %','scottish %','welch %']);
-INSERT INTO country_search VALUES ('GR', array['greek %']);
-INSERT INTO country_search VALUES ('HK', array['hong kong %']);
-INSERT INTO country_search VALUES ('HR', array['croatian %']);
-INSERT INTO country_search VALUES ('HU', array['hungarian %']);
-INSERT INTO country_search VALUES ('ID', array['indonesian %']);
-INSERT INTO country_search VALUES ('IE', array['irish %']);
-INSERT INTO country_search VALUES ('IL', array['israeli %']);
-INSERT INTO country_search VALUES ('IS', array['icelandic %']);
-INSERT INTO country_search VALUES ('IT', array['italian %']);
-INSERT INTO country_search VALUES ('JM', array['jamaican %']);
-INSERT INTO country_search VALUES ('JP', array['japanese %']);
-INSERT INTO country_search VALUES ('KR', array['korean %']);
-INSERT INTO country_search VALUES ('LV', array['latvian %']);
-INSERT INTO country_search VALUES ('MX', array['mexican %']);
-INSERT INTO country_search VALUES ('MZ', array['mozambican %']);
-INSERT INTO country_search VALUES ('NL', array['dutch %']);
-INSERT INTO country_search VALUES ('NO', array['norwegian %']);
-INSERT INTO country_search VALUES ('NZ', array['new zealand %']);
-INSERT INTO country_search VALUES ('PH', array['filipino %']);
-INSERT INTO country_search VALUES ('PK', array['pakistani %']);
-INSERT INTO country_search VALUES ('PL', array['polish %']);
-INSERT INTO country_search VALUES ('PR', array['puerto rican %']);
-INSERT INTO country_search VALUES ('PT', array['portugal %']);
-INSERT INTO country_search VALUES ('RO', array['romanian %']);
-INSERT INTO country_search VALUES ('RU', array['russian %']);
-INSERT INTO country_search VALUES ('SE', array['swedish %']);
-INSERT INTO country_search VALUES ('SG', array['singaporean %']);
-INSERT INTO country_search VALUES ('SI', array['slovenian %']);
-INSERT INTO country_search VALUES ('SK', array['slovak %']);
-INSERT INTO country_search VALUES ('SN', array['senegalese %']);
-INSERT INTO country_search VALUES ('TR', array['turkish %']);
-INSERT INTO country_search VALUES ('UA', array['ukrainian %']);
-INSERT INTO country_search VALUES ('US', array['us %, american %']);
-INSERT INTO country_search VALUES ('ZA', array['south african %']);
+INSERT INTO country_search VALUES ('AR', array['argentinian%']);
+INSERT INTO country_search VALUES ('AT', array['austrian%']);
+INSERT INTO country_search VALUES ('AU', array['australian%']);
+INSERT INTO country_search VALUES ('BE', array['belgian%']);
+INSERT INTO country_search VALUES ('BR', array['brazilian%']);
+INSERT INTO country_search VALUES ('CA', array['canadian%']);
+INSERT INTO country_search VALUES ('CG', array['republic of the congo%']);
+INSERT INTO country_search VALUES ('CH', array['swiss%']);
+INSERT INTO country_search VALUES ('CN', array['chinese%']);
+INSERT INTO country_search VALUES ('CU', array['cuban%']);
+INSERT INTO country_search VALUES ('CZ', array['czech%']);
+INSERT INTO country_search VALUES ('DE', array['german%']);
+INSERT INTO country_search VALUES ('DK', array['danish%']);
+INSERT INTO country_search VALUES ('DZ', array['algerian%']);
+INSERT INTO country_search VALUES ('EE', array['estonian%']);
+INSERT INTO country_search VALUES ('ES', array['spanish%']);
+INSERT INTO country_search VALUES ('FI', array['finnish%']);
+INSERT INTO country_search VALUES ('FR', array['french%']);
+INSERT INTO country_search VALUES ('GB', array['uk %', 'english%', 'british%','scottish%','welsh%']);
+INSERT INTO country_search VALUES ('GR', array['greek%']);
+INSERT INTO country_search VALUES ('HK', array['hong kong%']);
+INSERT INTO country_search VALUES ('HR', array['croatian%']);
+INSERT INTO country_search VALUES ('HU', array['hungarian%']);
+INSERT INTO country_search VALUES ('ID', array['indonesian%']);
+INSERT INTO country_search VALUES ('IE', array['irish%']);
+INSERT INTO country_search VALUES ('IL', array['israeli%']);
+INSERT INTO country_search VALUES ('IN', array['indian%']);
+INSERT INTO country_search VALUES ('IR', array['iranian%']);
+INSERT INTO country_search VALUES ('IS', array['icelandic%']);
+INSERT INTO country_search VALUES ('IT', array['italian%']);
+INSERT INTO country_search VALUES ('JM', array['jamaican%']);
+INSERT INTO country_search VALUES ('JP', array['japanese%']);
+INSERT INTO country_search VALUES ('KR', array['korean %', 'south korean%']);
+INSERT INTO country_search VALUES ('LV', array['latvian%']);
+INSERT INTO country_search VALUES ('MX', array['mexican%']);
+INSERT INTO country_search VALUES ('MZ', array['mozambican%']);
+INSERT INTO country_search VALUES ('NL', array['dutch%']);
+INSERT INTO country_search VALUES ('NO', array['norwegian%']);
+INSERT INTO country_search VALUES ('NZ', array['new zealand%']);
+INSERT INTO country_search VALUES ('PH', array['filipino%']);
+INSERT INTO country_search VALUES ('PK', array['pakistani%']);
+INSERT INTO country_search VALUES ('PL', array['polish%']);
+INSERT INTO country_search VALUES ('PR', array['puerto rican%']);
+INSERT INTO country_search VALUES ('PT', array['portugal%']);
+INSERT INTO country_search VALUES ('RO', array['romanian%']);
+INSERT INTO country_search VALUES ('RU', array['russian%']);
+INSERT INTO country_search VALUES ('SE', array['swedish%']);
+INSERT INTO country_search VALUES ('SG', array['singaporean%']);
+INSERT INTO country_search VALUES ('SI', array['slovenian%']);
+INSERT INTO country_search VALUES ('SK', array['slovak%']);
+INSERT INTO country_search VALUES ('SN', array['senegalese%']);
+INSERT INTO country_search VALUES ('TR', array['turkish%']);
+INSERT INTO country_search VALUES ('UA', array['ukrainian%']);
+INSERT INTO country_search VALUES ('US', array['us %', 'american%', 'usa %', 'los angeles %', 'san francisco %']);
+INSERT INTO country_search VALUES ('ZA', array['south african%']);
 """
         self.mbdb.execute(mbquery)
         self.close()
