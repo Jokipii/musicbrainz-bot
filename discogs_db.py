@@ -36,7 +36,8 @@ class DiscogsDbClient(object):
         mbClient = self.open(do=True, client=True)
         queryLinks = "SELECT gid, url, note FROM discogs_db_release_link LIMIT %s"
         queryDelete = "DELETE FROM discogs_db_release_link WHERE gid = %s"
-        for gid, url, note in self.dodb.execute(queryLinks, limit):
+        results = self.dodb.execute(queryLinks, limit).fetchall()
+        for gid, url, note in results:
             mbClient.add_url("release", gid, 76, url, note)
             self.dodb.execute(queryDelete, gid)
             print url + " Done!"
@@ -111,7 +112,8 @@ AND country ISNULL
 AND comment NOT LIKE '%%?%%'
 LIMIT %s
 """
-        for country_id, gid, name, comment in self.mbdb.execute(query, limit):
+        results = self.mbdb.execute(query, limit).fetchall()
+        for country_id, gid, name, comment in results:
             note = "Based on ambiguation comment"
             mbClient.set_artist_country_id(gid, country_id, note)
             print gid + " Done!"
@@ -152,18 +154,18 @@ LIMIT %s
         doquery = """
 DROP TABLE IF EXISTS mb_release_link, mb_release_group_link, mb_artist_link, mb_label_link;
 
-SELECT t1.gid, t1.name, t1.url, decodeURL(t1.url, 'http://www.discogs.com/release/')::integer AS id2 
+SELECT t1.gid, t1.name, t1.url, (regexp_matches(t1.url, '(?:^http://www.discogs.com/release/)([0-9]+)'))[1]::integer AS id2
 INTO mb_release_link 
-FROM dblink(:dblink, 'SELECT gid, name, url FROM do_release_link WHERE url LIKE ''http://www.discogs.com/release/%%''')
+FROM dblink(:dblink, 'SELECT gid, name, url FROM do_release_link WHERE url ~ ''^http://www.discogs.com/release/''')
 AS t1(gid uuid, name text, url text);
 ALTER TABLE mb_release_link ADD COLUMN id integer;
 UPDATE mb_release_link SET id = release.id FROM release WHERE id2 = release.id;
 DELETE FROM mb_release_link WHERE id IS NULL;
 ALTER TABLE mb_release_link DROP COLUMN id2;
 
-SELECT t1.gid, t1.name, t1.url, decodeURL(t1.url, 'http://www.discogs.com/master/')::integer AS id2 
+SELECT t1.gid, t1.name, t1.url, (regexp_matches(t1.url, '(?:^http://www.discogs.com/master/)([0-9]+)'))[1]::integer AS id2
 INTO mb_release_group_link 
-FROM dblink(:dblink, 'SELECT gid, name, url FROM do_release_group_link WHERE url LIKE ''http://www.discogs.com/master/%%''')
+FROM dblink(:dblink, 'SELECT gid, name, url FROM do_release_group_link WHERE url ~ ''^http://www.discogs.com/master/''')
 AS t1(gid uuid, name text, url text);
 ALTER TABLE mb_release_group_link ADD COLUMN id integer;
 UPDATE mb_release_group_link SET id = master.id FROM master WHERE id2 = master.id;
@@ -218,15 +220,6 @@ AS $$
   global name
   encoded = urllib.parse.quote_plus(name,'()')
   return encoded
-$$ LANGUAGE plpython3u;
-
-CREATE OR REPLACE FUNCTION artist_name(name text)
-  RETURNS text
-AS $$
-  import re
-  global name
-  result = re.match("(.+?)( \(\d+\))?$",name)
-  return result.group(1)
 $$ LANGUAGE plpython3u;
 
 UPDATE release SET country = 'United States' WHERE country = 'US';
@@ -486,7 +479,7 @@ WHERE artist_gid IN (
   SELECT artist_gid FROM possible_artist_mblink2
   GROUP BY artist_gid
   HAVING (COUNT(artist_gid) = 1)
-) AND artist_name = artist_name(discogs_artist_name);
+) AND artist_name = substring(discogs_artist_name FROM '(.+?)(?: \(\d+\))?$');
 
 DROP TABLE IF EXISTS mb_artist_releases2;
 SELECT *, release_name || ': http://musicbrainz.org/release/' || release_gid AS rel INTO mb_artist_releases2 FROM mb_artist_releases;
