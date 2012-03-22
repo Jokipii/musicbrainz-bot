@@ -113,11 +113,12 @@ AND comment NOT LIKE '%%?%%'
 LIMIT %s
 """
         results = self.mbdb.execute(query, limit).fetchall()
+        self.mbdb.close()
         for country_id, gid, name, comment in results:
             note = "Based on ambiguation comment"
             mbClient.set_artist_country_id(gid, country_id, note)
             print gid + " Done!"
-        self.close()
+        #self.close()
 
     def report(self):
         self.open(mb=True, do=True)
@@ -221,9 +222,6 @@ AS $$
   encoded = urllib.parse.quote_plus(name,'()')
   return encoded
 $$ LANGUAGE plpython3u;
-
-UPDATE release SET country = 'United States' WHERE country = 'US';
-UPDATE release SET country = 'United Kingdom' WHERE country = 'UK';
 """
         self.dodb.execute(doquery)
         self.close()
@@ -272,6 +270,107 @@ WHERE l_artist_url.link = 26038;
 """
         self.mbdb.execute(mbquery)
         self.close()
+ 
+    def create_country_mapping_table(self):
+        """
+        Created country mapping works on all (exception list below)
+        countries that Discogs currently have in they database.
+        
+        Exceptions cannot be directly mapped on MB country codes.
+        Discogs have 35.5k releases that use listed countries.
+        2/3 of these releases have "UK & Europe", "Scandinavia", 
+        or "USA & Canada" as they country.
+        
+        TODO: There must be some way to handle areas?
+        
+        Benelux	                            area
+        Africa	                            area
+        Asia	                            area
+        Australasia	                        area
+        Australia & New Zealand	            area
+        Central America	                    area
+        France & Benelux	                area
+        Germany & Switzerland	            area
+        Germany, Austria, & Switzerland	    area
+        North America (inc Mexico)	        area
+        Scandinavia	                        area
+        South America	                    area
+        UK & Europe	                        area
+        UK & Ireland	                    area
+        UK & US	                            area
+        UK, Europe & US	                    area
+        USA & Canada	                    area
+        USA, Canada & UK	                area
+        Gulf Cooperation Council	        area
+        Ivory Coast	                        area
+        Protectorate of Bohemia and Moravia historic
+        Austria-Hungary	                    historic
+        Virgin Islands	                    us or uk
+        Korea	                            north or south
+        """
+        self.open(do=True)
+        query = """
+DROP TABLE IF EXISTS country_mapping;
+CREATE TABLE country_mapping
+(
+  id integer,
+  iso_code character varying(2) NOT NULL,
+  name text NOT NULL
+);
+INSERT INTO country_mapping VALUES (NULL,'AG','Antigua & Barbuda');
+INSERT INTO country_mapping VALUES (NULL,'AN','Netherlands Antilles');
+INSERT INTO country_mapping VALUES (NULL,'BA','Bosnia & Herzegovina');
+INSERT INTO country_mapping VALUES (NULL,'BN','Brunei');
+INSERT INTO country_mapping VALUES (NULL,'BO','Bolivia');
+INSERT INTO country_mapping VALUES (NULL,'BS','Bahamas, The');
+INSERT INTO country_mapping VALUES (NULL,'CD','Congo, Democratic Republic of the');
+INSERT INTO country_mapping VALUES (NULL,'CG','Congo, Republic of the');
+INSERT INTO country_mapping VALUES (NULL,'CS','Serbia and Montenegro');
+INSERT INTO country_mapping VALUES (NULL,'GB','UK');
+INSERT INTO country_mapping VALUES (NULL,'IR','Iran');
+INSERT INTO country_mapping VALUES (NULL,'KP','North Korea');
+INSERT INTO country_mapping VALUES (NULL,'KR','South Korea');
+INSERT INTO country_mapping VALUES (NULL,'MD','Moldova');
+INSERT INTO country_mapping VALUES (NULL,'MK','Macedonia');
+INSERT INTO country_mapping VALUES (NULL,'MM','Burma');
+INSERT INTO country_mapping VALUES (NULL,'MO','Macau');
+INSERT INTO country_mapping VALUES (NULL,'PF','Clipperton Island');
+INSERT INTO country_mapping VALUES (NULL,'PN','Pitcairn Islands');
+INSERT INTO country_mapping VALUES (NULL,'RE','Reunion');
+INSERT INTO country_mapping VALUES (NULL,'RU','Russia');
+INSERT INTO country_mapping VALUES (NULL,'SU','USSR');
+INSERT INTO country_mapping VALUES (NULL,'SY','Syria');
+INSERT INTO country_mapping VALUES (NULL,'TF','French Southern & Antarctic Lands');
+INSERT INTO country_mapping VALUES (NULL,'TF','Europa Island');
+INSERT INTO country_mapping VALUES (NULL,'TL','East Timor');
+INSERT INTO country_mapping VALUES (NULL,'TT','Trinidad & Tobago');
+INSERT INTO country_mapping VALUES (NULL,'TZ','Tanzania');
+INSERT INTO country_mapping VALUES (NULL,'UM','Wake Island');
+INSERT INTO country_mapping VALUES (NULL,'UM','Kingman Reef');
+INSERT INTO country_mapping VALUES (NULL,'US','US');
+INSERT INTO country_mapping VALUES (NULL,'VA','Vatican City');
+INSERT INTO country_mapping VALUES (NULL,'VA','Holy See (Vatican City)');
+INSERT INTO country_mapping VALUES (NULL,'VC','Saint Vincent and the Grenadines');
+INSERT INTO country_mapping VALUES (NULL,'VE','Venezuela');
+INSERT INTO country_mapping VALUES (NULL,'VN','Vietnam');
+INSERT INTO country_mapping VALUES (NULL,'XC','Czechoslovakia');
+INSERT INTO country_mapping VALUES (NULL,'XG','German Democratic Republic (GDR)');
+INSERT INTO country_mapping VALUES (NULL,'YU','Yugoslavia');
+WITH country AS (
+    SELECT id, iso_code, name 
+    FROM dblink(:dblink, 'SELECT id, iso_code, name FROM country') 
+    AS t1(id integer, iso_code character varying(2), name text)
+)
+UPDATE country_mapping SET id = (SELECT country.id FROM country WHERE country_mapping.iso_code = country.iso_code);
+WITH country AS (
+    SELECT id, iso_code, name 
+    FROM dblink(:dblink, 'SELECT id, iso_code, name FROM country') 
+    AS t1(id integer, iso_code character varying(2), name text)
+)
+INSERT INTO country_mapping SELECT * FROM country;
+"""
+        self.dodb.execute(text(query), dblink=cfg.MB_DB_LINK)
+        self.close()
 
     def create_country_search_table(self):
         self.open(mb=True)
@@ -283,15 +382,23 @@ CREATE TABLE country_search
   search text[] NOT NULL,
   CONSTRAINT country_search_pkey PRIMARY KEY (iso_code)
 );
+INSERT INTO country_search VALUES ('AG', array['antigua & barbuda%']);
+INSERT INTO country_search VALUES ('AN', array['netherlands antilles%']);
 INSERT INTO country_search VALUES ('AR', array['argentinian%']);
 INSERT INTO country_search VALUES ('AT', array['austrian%']);
 INSERT INTO country_search VALUES ('AU', array['australian%']);
+INSERT INTO country_search VALUES ('BA', array['bosnia & herzegovina%']);
 INSERT INTO country_search VALUES ('BE', array['belgian%']);
+INSERT INTO country_search VALUES ('BN', array['brunei%']);
+INSERT INTO country_search VALUES ('BO', array['bolivia%']);
 INSERT INTO country_search VALUES ('BR', array['brazilian%']);
+INSERT INTO country_search VALUES ('BS', array['bahamas, the%']);
 INSERT INTO country_search VALUES ('CA', array['canadian%']);
-INSERT INTO country_search VALUES ('CG', array['republic of the congo%']);
+INSERT INTO country_search VALUES ('CD', array['congo, democratic republic of the%']);
+INSERT INTO country_search VALUES ('CG', array['congo, republic of the%','republic of the congo%']);
 INSERT INTO country_search VALUES ('CH', array['swiss%']);
 INSERT INTO country_search VALUES ('CN', array['chinese%']);
+INSERT INTO country_search VALUES ('CS', array['serbia and montenegro%']);
 INSERT INTO country_search VALUES ('CU', array['cuban%']);
 INSERT INTO country_search VALUES ('CZ', array['czech%']);
 INSERT INTO country_search VALUES ('DE', array['german%']);
@@ -310,36 +417,56 @@ INSERT INTO country_search VALUES ('ID', array['indonesian%']);
 INSERT INTO country_search VALUES ('IE', array['irish%']);
 INSERT INTO country_search VALUES ('IL', array['israeli%']);
 INSERT INTO country_search VALUES ('IN', array['indian%']);
-INSERT INTO country_search VALUES ('IR', array['iranian%']);
+INSERT INTO country_search VALUES ('IR', array['iranian%','iran%']);
 INSERT INTO country_search VALUES ('IS', array['icelandic%']);
 INSERT INTO country_search VALUES ('IT', array['italian%']);
 INSERT INTO country_search VALUES ('JM', array['jamaican%']);
 INSERT INTO country_search VALUES ('JP', array['japanese%']);
-INSERT INTO country_search VALUES ('KR', array['korean %', 'south korean%']);
+INSERT INTO country_search VALUES ('KP', array['north korea%']);
+INSERT INTO country_search VALUES ('KR', array['south korean%','south korea%']);
 INSERT INTO country_search VALUES ('LV', array['latvian%']);
+INSERT INTO country_search VALUES ('MD', array['moldova%']);
+INSERT INTO country_search VALUES ('MK', array['macedonia%']);
+INSERT INTO country_search VALUES ('MM', array['burma%']);
+INSERT INTO country_search VALUES ('MO', array['macau%']);
 INSERT INTO country_search VALUES ('MX', array['mexican%']);
 INSERT INTO country_search VALUES ('MZ', array['mozambican%']);
 INSERT INTO country_search VALUES ('NL', array['dutch%']);
 INSERT INTO country_search VALUES ('NO', array['norwegian%']);
 INSERT INTO country_search VALUES ('NZ', array['new zealand%']);
+INSERT INTO country_search VALUES ('PF', array['clipperton island%']);
 INSERT INTO country_search VALUES ('PH', array['filipino%']);
 INSERT INTO country_search VALUES ('PK', array['pakistani%']);
 INSERT INTO country_search VALUES ('PL', array['polish%']);
+INSERT INTO country_search VALUES ('PN', array['pitcairn islands%']);
 INSERT INTO country_search VALUES ('PR', array['puerto rican%']);
 INSERT INTO country_search VALUES ('PT', array['portugal%']);
+INSERT INTO country_search VALUES ('RE', array['reunion%']);
 INSERT INTO country_search VALUES ('RO', array['romanian%']);
-INSERT INTO country_search VALUES ('RU', array['russian%']);
+INSERT INTO country_search VALUES ('RU', array['russian%','russia%']);
 INSERT INTO country_search VALUES ('SE', array['swedish%']);
 INSERT INTO country_search VALUES ('SG', array['singaporean%']);
 INSERT INTO country_search VALUES ('SI', array['slovenian%']);
 INSERT INTO country_search VALUES ('SK', array['slovak%']);
 INSERT INTO country_search VALUES ('SN', array['senegalese%']);
+INSERT INTO country_search VALUES ('SU', array['ussr%']);
+INSERT INTO country_search VALUES ('SY', array['syria%']);
+INSERT INTO country_search VALUES ('TL', array['east timor%']);
 INSERT INTO country_search VALUES ('TR', array['turkish%']);
+INSERT INTO country_search VALUES ('TZ', array['tanzania%']);
 INSERT INTO country_search VALUES ('UA', array['ukrainian%']);
+INSERT INTO country_search VALUES ('UM', array['wake island%','kingman reef%']);
 INSERT INTO country_search VALUES ('US', array['us %', 'american%', 'usa %', 'los angeles %', 'san francisco %']);
+INSERT INTO country_search VALUES ('VA', array['vatican city%','holy see (vatican city)%']);
+INSERT INTO country_search VALUES ('VC', array['saint vincent and the grenadines%']);
+INSERT INTO country_search VALUES ('VE', array['venezuela%']);
+INSERT INTO country_search VALUES ('VN', array['vietnam%']);
+INSERT INTO country_search VALUES ('XC', array['czechoslovakia%']);
+INSERT INTO country_search VALUES ('XG', array['german democratic republic%']);
+INSERT INTO country_search VALUES ('YU', array['yugoslavia%']);
 INSERT INTO country_search VALUES ('ZA', array['south african%']);
 """
-        self.mbdb.execute(mbquery)
+        self.mbdb.execute(text(mbquery))
         self.close()
 
     def release_link_table(self):
