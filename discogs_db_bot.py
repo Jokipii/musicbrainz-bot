@@ -10,7 +10,7 @@ if __name__ == '__main__':
         choices=('create_functions','create_tables','create_views',
                 'do_links','do_release_links','do_artist_links','do_artist_links2',
                 'do_release_credits','report','commit_artist_links','commit_artist2_links',
-                'commit_artist_types','commit_artist_country',
+                'commit_artist_types','commit_artist_country','commit_artist_country2',
                 'commit_release_links','commit_release_credits'),
         help='''Action
 Initial actions:
@@ -33,6 +33,7 @@ commit_artist_links         Commit artist links to MusicBrainz
 commit_artist2_links        Commit VA release track artist links to MusicBrainz
 commit_artist_types         Commit artist types based on disambiguation comments
 commit_artist_country       Commit artist country based on disambiguation comments
+commit_artist_country2      Commit artist country based on Discogs profile text
 commit_release_links        Commit release links to MusicBrainz
 commit_release_credits      Commit release artist relationships to MusicBrainz''')
     args = parser.parse_args()
@@ -74,6 +75,8 @@ commit_release_credits      Commit release artist relationships to MusicBrainz''
             doClient.commit_artist_types(args.l)
         elif args.a == 'commit_artist_country':
             doClient.commit_artist_country(args.l)
+        elif args.a == 'commit_artist_country2':
+            doClient.commit_artist_country2(args.l)
         elif args.a == 'commit_release_links':
             doClient.commit_release_links(args.l)
         elif args.a == 'commit_release_credits':
