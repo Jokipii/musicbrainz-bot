@@ -113,12 +113,11 @@ AND comment NOT LIKE '%%?%%'
 LIMIT %s
 """
         results = self.mbdb.execute(query, limit).fetchall()
-        self.mbdb.close()
+        self.close()
         for country_id, gid, name, comment in results:
             note = "Based on ambiguation comment"
             mbClient.set_artist_country_id(gid, country_id, note)
             print gid + " Done!"
-        #self.close()
 
     def report(self):
         self.open(mb=True, do=True)
@@ -272,6 +271,15 @@ WHERE l_artist_url.link = 26038;
         self.close()
  
     def create_media_type_mapping_table(self):
+        """
+        Method creates release_format table where format_id is same as MB
+        medium_format.id and format_name is same as MB medium_format.name
+        and release_id refers to Discogs release.id
+        
+        Method handles all Discogs formats except 'Book', which is intentionally
+        excluded. Method uses format field and when necessary description field
+        (http://www.discogs.com/help/formatslist) to find correct MB format.
+        """
         self.open(do=True)
         query = """
 DROP TABLE IF EXISTS release_format;
@@ -378,7 +386,7 @@ SELECT DISTINCT 12 as format_id, 'Digital Media' as format_name, release_id
 FROM releases_formats WHERE format_name = ANY(array['File'])
 	UNION
 SELECT DISTINCT 13 as format_id, 'Other' as format_name, release_id
-FROM releases_formats WHERE format_name = ANY(array['Datassette','MVD','Hybrid','SelectaVision','Floppy Disk'])
+FROM releases_formats WHERE format_name = ANY(array['Datassette','MVD','Hybrid','SelectaVision','Floppy Disk','Box Set','All Media'])
 	UNION
 SELECT DISTINCT 14 as format_id, 'Wax Cylinder' as format_name, release_id
 FROM releases_formats WHERE format_name = ANY(array['Cylinder','Pathé Disc'])

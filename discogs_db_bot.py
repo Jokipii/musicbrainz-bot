@@ -16,7 +16,8 @@ if __name__ == '__main__':
 Initial actions:
 create_functions            Create functions
 create_tables               Create additional tables in Discogs database (release_track_count,
-                                country_mapping) and in MB database (country_search)
+                                country_mapping, release_format) and in MB database 
+                                (country_search)
 create_views                Create views on MB database (do_artist_link, do_label_link, 
                                 do_release_group_link, do_release_link)
 Actions after database update:
@@ -43,6 +44,7 @@ commit_release_credits      Commit release artist relationships to MusicBrainz''
         elif args.a == 'create_tables':
             doClient.create_country_mapping_table()
             doClient.create_country_search_table()
+            doClient.create_media_type_mapping_table()
             doClient.create_track_count()
             print "create tables done!"
         elif args.a == 'create_views':
