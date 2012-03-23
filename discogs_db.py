@@ -1,4 +1,4 @@
-import config as cfg
+﻿import config as cfg
 import sqlalchemy
 from sqlalchemy.sql import text
 from editing import MusicBrainzClient
@@ -381,7 +381,7 @@ SELECT DISTINCT 13 as format_id, 'Other' as format_name, release_id
 FROM releases_formats WHERE format_name = ANY(array['Datassette','MVD','Hybrid','SelectaVision','Floppy Disk'])
 	UNION
 SELECT DISTINCT 14 as format_id, 'Wax Cylinder' as format_name, release_id
-FROM releases_formats WHERE format_name = ANY(array['Cylinder','Path� Disc'])
+FROM releases_formats WHERE format_name = ANY(array['Cylinder','Pathé Disc'])
 	UNION
 SELECT DISTINCT 16 as format_id, 'DCC' as format_name, release_id
 FROM releases_formats WHERE format_name = ANY(array['DCC'])
