@@ -110,6 +110,7 @@ SELECT countries.id AS country_id, s_artist.gid, s_artist.name, comment FROM s_a
 JOIN countries ON lower(comment) LIKE ANY(search)
 AND country ISNULL
 AND comment NOT LIKE '%%?%%'
+AND comment !~* '^[a-z]+[-/]'
 LIMIT %s
 """
         results = self.mbdb.execute(query, limit).fetchall()
@@ -143,6 +144,7 @@ JOIN artist ON mb_artist_link.id = artist.id
 JOIN gids ON gids.gid = mb_artist_link.gid
 JOIN countries ON lower(artist.profile) LIKE ANY(search)
 WHERE artist.profile NOT LIKE '%%?%%'
+AND artist.profile !~* '^[a-z]+[-/]'
 LIMIT :limit
 """
         results = self.dodb.execute(text(query), dblink=cfg.MB_DB_LINK, limit=limit).fetchall()
@@ -654,33 +656,26 @@ INSERT INTO country_search VALUES ('ZA', array['south african%']);
         mbquery = """
 DROP TABLE IF EXISTS do_release_link_catno;
 SELECT do_label_link.name AS label_name, do_label_link.gid AS label_gid, release_label.catalog_number, release.gid, 
-release_name.name, tracklist.track_count, medium_format.name AS format, country.name AS country
+release_name.name, SUM(tracklist.track_count) AS track_count, medium.format, release.country, release.date_year AS year
 INTO do_release_link_catno
 FROM do_label_link
 JOIN release_label ON do_label_link.id = release_label.label
 JOIN release ON release_label.release = release.id
-JOIN country ON release.country = country.id
 JOIN release_name ON release.name = release_name.id
 JOIN medium ON medium.release = release.id
 JOIN tracklist ON medium.tracklist = tracklist.id
-LEFT JOIN medium_format ON medium.format = medium_format.id
-WHERE release_label.catalog_number NOTNULL;
+WHERE release_label.catalog_number NOTNULL
+GROUP BY do_label_link.name, do_label_link.gid, release_label.catalog_number, release.gid, release_name.name, medium.format, release.country, release.date_year;
 
 DELETE FROM do_release_link_catno USING do_release_link WHERE do_release_link_catno.gid = do_release_link.gid;
-
-DELETE FROM do_release_link_catno WHERE catalog_number IN (
-  SELECT catalog_number FROM do_release_link_catno
-  GROUP BY catalog_number
-  HAVING (COUNT(catalog_number) > 1)
-);
 """
         mbquery_cleanup = "DROP TABLE IF EXISTS do_release_link_catno"
         doquery = """
-DROP TABLE IF EXISTS rel_catno, discogs_db_release_link;
+DROP TABLE IF EXISTS rel_catno;
 
 WITH mb_release_link_catno AS (
-    SELECT DISTINCT t1.* FROM dblink(:dblink, 'SELECT label_gid, label_name, catalog_number, gid, name, track_count, format, country FROM do_release_link_catno')
-    AS t1(label_gid uuid, label_name text, catalog_number text, gid uuid, name text, track_count integer, format text, country text)
+    SELECT DISTINCT t1.* FROM dblink(:dblink, 'SELECT label_gid, label_name, catalog_number, gid, name, track_count, format, country, year FROM do_release_link_catno')
+    AS t1(label_gid uuid, label_name text, catalog_number text, gid uuid, name text, track_count integer, format integer, country integer, year smallint)
 )
 SELECT DISTINCT mb_label_link.id AS label_id, mb_release_link_catno.*, releases_labels.release_id
 INTO rel_catno 
@@ -688,45 +683,37 @@ FROM mb_release_link_catno
 JOIN mb_label_link ON mb_release_link_catno.label_gid = mb_label_link.gid
 JOIN label ON mb_label_link.id = label.id
 JOIN releases_labels ON label.name = releases_labels.label
-WHERE releases_labels.catno = mb_release_link_catno.catalog_number;
+WHERE regexp_replace(releases_labels.catno, ' ', '') = regexp_replace(mb_release_link_catno.catalog_number, ' ', '');
 
-UPDATE rel_catno SET format = 'File' WHERE format = 'Digital Media';
-UPDATE rel_catno SET format = 'Minidisc' WHERE format = 'MiniDisc';
-UPDATE rel_catno SET format = 'CDr' WHERE format = 'CR-R';
-
-DELETE FROM rel_catno
-WHERE catalog_number IN (
-  SELECT catalog_number FROM rel_catno
-  GROUP BY catalog_number
-  HAVING (COUNT(catalog_number) > 1)
-);
-
-DELETE FROM rel_catno
-WHERE gid IN (
-  SELECT gid FROM rel_catno
-  GROUP BY gid
-  HAVING (COUNT(gid) > 1)
-);
-
+DROP TABLE IF EXISTS discogs_db_release_link;
 WITH rel_catno2 AS (
     SELECT DISTINCT rel_catno.* FROM rel_catno
     JOIN release ON rel_catno.release_id = release.id
     JOIN release_track_count ON release_track_count.release_id = release.id
-    JOIN releases_formats ON releases_formats.release_id = release.id
+    JOIN release_format ON release_format.release_id = release.id
+    JOIN country_mapping ON country_mapping.id = rel_catno.country
     WHERE upper(release.title) = upper(rel_catno.name)
     AND release_track_count.count = track_count
-    AND format = releases_formats.format_name
-    AND rel_catno.country = release.country
+    AND rel_catno.format = release_format.format_id
+    AND country_mapping.name = release.country
+    AND left(release.released, 4)::smallint = year
 )
 SELECT gid, 'http://www.discogs.com/release/' || release_id AS url, 'Label "' || label_name || '": http://musicbrainz.org/label/' 
 || label_gid || ' have Discogs link.
 It collection contains release "' || name || '": http://musicbrainz.org/release/' 
 || gid || ' with unique catalog number "' || catalog_number || '".
 Collection of linked Discogs label contains release http://www.discogs.com/release/'
-|| release_id  || ' with same unique catalog number, case insensitive match on release name, same number of tracks, same format and same release country' AS note
+|| release_id  || ' with same normalized catalog number, case insensitive match on release name, same number of tracks, same format, same release country, and same release year' AS note
 INTO discogs_db_release_link
 FROM rel_catno2
 ORDER BY label_name;
+
+DELETE FROM discogs_db_release_link
+WHERE gid IN (
+  SELECT gid FROM discogs_db_release_link
+  GROUP BY gid
+  HAVING (COUNT(gid) > 1)
+);
 
 DROP TABLE IF EXISTS rel_catno;
 """
