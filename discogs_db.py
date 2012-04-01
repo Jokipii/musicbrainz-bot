@@ -453,6 +453,57 @@ FROM releases_formats WHERE format_name = ANY(array['Video 2000'])
         self.mbdb.execute(query)
         self.close()
 
+    def create_release_status_table(self):
+        """
+        Method creates release_format table where format_id is same as MB
+        medium_format.id and format_name is same as MB medium_format.name
+        and release_id refers to Discogs release.id
+        
+        Method handles all Discogs formats except 'Book', which is intentionally
+        excluded. Method uses format field and when necessary description field
+        (http://www.discogs.com/help/formatslist) to find correct MB format.
+        """
+        self.open(do=True)
+        query = """
+DROP TABLE IF EXISTS release_status;
+
+SELECT release_id, 1 AS status
+INTO release_status
+FROM releases_formats
+WHERE ('Unofficial Release' <> ALL(descriptions) AND 'Partially Unofficial' <> ALL(descriptions))
+AND ('Promo' <> ALL(descriptions) AND 'White Label' <> ALL(descriptions) AND 'Test Pressing' <> ALL(descriptions))
+UNION
+SELECT release_id, 2 AS status
+FROM releases_formats
+WHERE ('Promo' = ANY(descriptions) OR 'White Label' = ANY(descriptions) OR 'Test Pressing' = ANY(descriptions))
+UNION
+SELECT release_id, 3 AS status
+FROM releases_formats
+WHERE ('Unofficial Release' = ANY(descriptions) OR 'Partially Unofficial' = ANY(descriptions))
+AND ('Promo' <> ALL(descriptions) AND 'White Label' <> ALL(descriptions) AND 'Test Pressing' <> ALL(descriptions))
+"""
+        self.mbdb.execute(query)
+        self.close()
+
+    def create_release_mb_mapping_table(self):
+        self.open(do=True)
+        query = """
+UPDATE release SET released = NULL WHERE released !~ '^[0-9]{4}';
+
+DROP TABLE IF EXISTS release_mb_mapping;
+
+SELECT DISTINCT release.id AS release_id, release.title, left(release.released, 4)::smallint AS year, release_format.format_name, release_format.format_id,
+	release_track_count.count AS track_count, release_status.status, country_mapping.id AS country_id, release.country
+INTO release_mb_mapping
+FROM release
+LEFT JOIN release_format ON release_format.release_id = release.id
+LEFT JOIN release_track_count ON release_track_count.release_id = release.id
+LEFT JOIN release_status ON release_status.release_id = release.id
+LEFT JOIN country_mapping ON country_mapping.name = release.country;
+"""
+        self.mbdb.execute(query)
+        self.close()
+
     def create_country_mapping_table(self):
         """
         Created country mapping works on all (exception list below)
@@ -655,8 +706,10 @@ INSERT INTO country_search VALUES ('ZA', array['south african%']);
         self.open(do=True, mb=True)
         mbquery = """
 DROP TABLE IF EXISTS do_release_link_catno;
+
 SELECT do_label_link.name AS label_name, do_label_link.gid AS label_gid, release_label.catalog_number, release.gid, 
-release_name.name, SUM(tracklist.track_count) AS track_count, medium.format, release.country, release.date_year AS year
+	release_name.name, SUM(tracklist.track_count) AS track_count, medium.format, release.country, release.date_year AS year,
+	release.status
 INTO do_release_link_catno
 FROM do_label_link
 JOIN release_label ON do_label_link.id = release_label.label
@@ -665,7 +718,8 @@ JOIN release_name ON release.name = release_name.id
 JOIN medium ON medium.release = release.id
 JOIN tracklist ON medium.tracklist = tracklist.id
 WHERE release_label.catalog_number NOTNULL
-GROUP BY do_label_link.name, do_label_link.gid, release_label.catalog_number, release.gid, release_name.name, medium.format, release.country, release.date_year;
+GROUP BY do_label_link.name, do_label_link.gid, release_label.catalog_number, release.gid, release_name.name, medium.format, 
+	release.country, release.date_year, release.status;
 
 DELETE FROM do_release_link_catno USING do_release_link WHERE do_release_link_catno.gid = do_release_link.gid;
 """
@@ -674,8 +728,8 @@ DELETE FROM do_release_link_catno USING do_release_link WHERE do_release_link_ca
 DROP TABLE IF EXISTS rel_catno;
 
 WITH mb_release_link_catno AS (
-    SELECT DISTINCT t1.* FROM dblink(:dblink, 'SELECT label_gid, label_name, catalog_number, gid, name, track_count, format, country, year FROM do_release_link_catno')
-    AS t1(label_gid uuid, label_name text, catalog_number text, gid uuid, name text, track_count integer, format integer, country integer, year smallint)
+    SELECT DISTINCT t1.* FROM dblink(:dblink, 'SELECT label_gid, label_name, catalog_number, gid, name, track_count, format, country, year, status FROM do_release_link_catno')
+    AS t1(label_gid uuid, label_name text, catalog_number text, gid uuid, name text, track_count integer, format integer, country integer, year smallint, status integer)
 )
 SELECT DISTINCT mb_label_link.id AS label_id, mb_release_link_catno.*, releases_labels.release_id
 INTO rel_catno 
@@ -688,25 +742,20 @@ WHERE regexp_replace(releases_labels.catno, ' ', '') = regexp_replace(mb_release
 DROP TABLE IF EXISTS discogs_db_release_link;
 WITH rel_catno2 AS (
     SELECT DISTINCT rel_catno.* FROM rel_catno
-    JOIN release ON rel_catno.release_id = release.id
-    JOIN release_track_count ON release_track_count.release_id = release.id
-    JOIN release_format ON release_format.release_id = release.id
-    JOIN country_mapping ON country_mapping.id = rel_catno.country
-    WHERE upper(release.title) = upper(rel_catno.name)
-    AND release_track_count.count = track_count
-    AND rel_catno.format = release_format.format_id
-    AND country_mapping.name = release.country
-    AND left(release.released, 4)::smallint = year
+    JOIN release_mb_mapping ON rel_catno.release_id = release_mb_mapping.release_id
+    WHERE upper(release_mb_mapping.title) = upper(rel_catno.name)
+    AND release_mb_mapping.track_count = rel_catno.track_count
+    AND (rel_catno.format = release_mb_mapping.format_id 
+        OR (rel_catno.format = ANY(array[7, 29, 30, 31]) AND release_mb_mapping.format_id = ANY(array[7, 29, 30, 31])))
+    AND rel_catno.country = release_mb_mapping.country_id
+    AND release_mb_mapping.year = rel_catno.year
+    AND release_mb_mapping.status = rel_catno.status
 )
-SELECT gid, 'http://www.discogs.com/release/' || release_id AS url, 'Label "' || label_name || '": http://musicbrainz.org/label/' 
-|| label_gid || ' have Discogs link.
-It collection contains release "' || name || '": http://musicbrainz.org/release/' 
-|| gid || ' with unique catalog number "' || catalog_number || '".
-Collection of linked Discogs label contains release http://www.discogs.com/release/'
-|| release_id  || ' with same normalized catalog number, case insensitive match on release name, same number of tracks, same format, same release country, and same release year' AS note
+SELECT gid, 'http://www.discogs.com/release/' || release_id AS url, 'Release found on linked Discogs label with same normalized catalog number,'
+        || ' case insensitive match on release name, same number of tracks, same format, same release country, and same release year' AS note
 INTO discogs_db_release_link
 FROM rel_catno2
-ORDER BY label_name;
+ORDER BY label_name, gid;
 
 DELETE FROM discogs_db_release_link
 WHERE gid IN (

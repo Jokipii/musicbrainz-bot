@@ -46,7 +46,11 @@ commit_release_credits      Commit release artist relationships to MusicBrainz''
             doClient.create_country_mapping_table()
             doClient.create_country_search_table()
             doClient.create_media_type_mapping_table()
+            doClient.create_release_status_table()
+            print "country, media_type and release_status tables done!"
             doClient.create_track_count()
+            print "track count done!"
+            doClient.create_release_mb_mapping_table()
             print "create tables done!"
         elif args.a == 'create_views':
             doClient.create_link_views()
