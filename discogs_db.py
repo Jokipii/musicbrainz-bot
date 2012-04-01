@@ -191,8 +191,9 @@ DROP TABLE IF EXISTS mb_release_link, mb_release_group_link, mb_artist_link, mb_
 
 SELECT t1.gid, t1.name, t1.url, (regexp_matches(t1.url, '(?:^http://www.discogs.com/release/)([0-9]+)'))[1]::integer AS id2
 INTO mb_release_link 
-FROM dblink(:dblink, 'SELECT gid, name, url FROM do_release_link WHERE url ~ ''^http://www.discogs.com/release/''')
-AS t1(gid uuid, name text, url text);
+FROM dblink(:dblink, 
+'SELECT gid, name, url, edits_pending FROM do_release_link WHERE url ~ ''^http://www.discogs.com/release/''')
+AS t1(gid uuid, name text, url text, edits_pending integer);
 ALTER TABLE mb_release_link ADD COLUMN id integer;
 UPDATE mb_release_link SET id = release.id FROM release WHERE id2 = release.id;
 DELETE FROM mb_release_link WHERE id IS NULL;
@@ -200,8 +201,9 @@ ALTER TABLE mb_release_link DROP COLUMN id2;
 
 SELECT t1.gid, t1.name, t1.url, (regexp_matches(t1.url, '(?:^http://www.discogs.com/master/)([0-9]+)'))[1]::integer AS id2
 INTO mb_release_group_link 
-FROM dblink(:dblink, 'SELECT gid, name, url FROM do_release_group_link WHERE url ~ ''^http://www.discogs.com/master/''')
-AS t1(gid uuid, name text, url text);
+FROM dblink(:dblink,
+'SELECT gid, name, url, edits_pending FROM do_release_group_link WHERE url ~ ''^http://www.discogs.com/master/''')
+AS t1(gid uuid, name text, url text, edits_pending integer);
 ALTER TABLE mb_release_group_link ADD COLUMN id integer;
 UPDATE mb_release_group_link SET id = master.id FROM master WHERE id2 = master.id;
 DELETE FROM mb_release_group_link WHERE id IS NULL;
@@ -209,7 +211,8 @@ ALTER TABLE mb_release_group_link DROP COLUMN id2;
 
 SELECT t1.gid, t1.name, t1.url, lower(decodeURL(t1.url, 'http://www.discogs.com/artist/')) AS id2 
 INTO mb_artist_link 
-FROM dblink(:dblink, 'SELECT gid, name, url FROM do_artist_link') AS t1(gid uuid, name text, url text);
+FROM dblink(:dblink,
+'SELECT gid, name, url, edits_pending FROM do_artist_link') AS t1(gid uuid, name text, url text, edits_pending integer);
 ALTER TABLE mb_artist_link ADD COLUMN id integer;
 UPDATE mb_artist_link SET id = artist.id FROM artist WHERE id2 = lower(artist.name);
 DELETE FROM mb_artist_link WHERE id IS NULL;
@@ -217,7 +220,8 @@ ALTER TABLE mb_artist_link DROP COLUMN id2;
 
 SELECT t1.gid, t1.name, t1.url, lower(decodeURL(t1.url, 'http://www.discogs.com/label/')) AS id2 
 INTO mb_label_link 
-FROM dblink(:dblink, 'SELECT gid, name, url FROM do_label_link') AS t1(gid uuid, name text, url text);
+FROM dblink(:dblink,
+'SELECT gid, name, url, edits_pending FROM do_label_link') AS t1(gid uuid, name text, url text, edits_pending integer);
 ALTER TABLE mb_label_link ADD COLUMN id integer;
 UPDATE mb_label_link SET id = label.id FROM label WHERE id2 = lower(label.name);
 DELETE FROM mb_label_link WHERE id IS NULL;
@@ -271,7 +275,7 @@ CREATE INDEX l_label_url_idx_discogs ON l_label_url(link) WHERE link = 27037;
 CREATE INDEX l_artist_url_idx_discogs ON l_artist_url(link) WHERE link = 26038;
 
 CREATE OR REPLACE VIEW do_release_link AS
-SELECT release.id, release_name.name, release.gid, url.url
+SELECT release.id, release_name.name, release.gid, url.url, l_release_url.edits_pending
 FROM l_release_url
 JOIN url ON l_release_url.entity1 = url.id
 JOIN release ON l_release_url.entity0 = release.id
@@ -279,7 +283,7 @@ JOIN release_name ON release.name = release_name.id
 WHERE l_release_url.link = 6301;
 
 CREATE OR REPLACE VIEW do_release_group_link AS
-SELECT release_group.id, release_name.name, release_group.gid, url.url
+SELECT release_group.id, release_name.name, release_group.gid, url.url, l_release_group_url.edits_pending
 FROM l_release_group_url
 JOIN url ON l_release_group_url.entity1 = url.id
 JOIN release_group ON l_release_group_url.entity0 = release_group.id
@@ -287,7 +291,7 @@ JOIN release_name ON release_group.name = release_name.id
 WHERE l_release_group_url.link = 6309;
 
 CREATE OR REPLACE VIEW do_label_link AS
-SELECT label.id, label_name.name, label.gid, url.url
+SELECT label.id, label_name.name, label.gid, url.url, l_label_url.edits_pending
 FROM l_label_url
 JOIN url ON l_label_url.entity1 = url.id
 JOIN label ON l_label_url.entity0 = label.id
@@ -295,7 +299,7 @@ JOIN label_name ON label.name = label_name.id
 WHERE l_label_url.link = 27037;
 
 CREATE OR REPLACE VIEW do_artist_link AS
-SELECT artist.id, artist_name.name, artist.gid, url.url
+SELECT artist.id, artist_name.name, artist.gid, url.url, l_artist_url.edits_pending
 FROM l_artist_url
 JOIN url ON l_artist_url.entity1 = url.id
 JOIN artist ON l_artist_url.entity0 = artist.id
