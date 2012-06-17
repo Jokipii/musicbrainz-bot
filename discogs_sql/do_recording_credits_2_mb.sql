@@ -34,7 +34,7 @@ FROM remix_temp
 USING remove
 WHERE remix_temp.artist_gid = remove.artist_gid AND remix_temp.gid = remove.gid;
 
-SELECT artist_gid, gid, (array_agg(note))[1]
+SELECT artist_gid, gid, (array_agg(note))[1] AS note
 INTO remix_temp2
 FROM remix_temp
 GROUP BY artist_gid, gid
