@@ -157,6 +157,13 @@ class DiscogsDbClient(object):
                 print url+' found, do nothing!'
         self.close()
 
+    def run_convert_db_relations(self, limit):
+        mbClient = self.open(mb=True, client=True)
+        query = read_query('run_convert_db_relations')
+        for id, link_type in self.mbdb.execute(query, limit):
+            mbClient.edit_relationship(id, 'artist', 'url', link_type, 188, {}, 'Convert whitelisted relation to "has a page in a database at"-form', True)
+        self.close()
+
     def run_artist_types(self, limit):
         mbClient = self.open(mb=True, client=True)
         query1 = read_query('run_artist_types_1')

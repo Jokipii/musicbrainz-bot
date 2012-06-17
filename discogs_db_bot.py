@@ -23,7 +23,8 @@ if __name__ == '__main__':
                 'commit_release_barcode',
                 'commit_recording_credits', 
                 'run_artist_404', 'run_label_404',
-                'run_artist_types','run_artist_country','run_artist_country2'
+                'run_artist_types','run_artist_country','run_artist_country2',
+                'run_convert_db_relations'
                 ),
         help='''Action
 Initial actions:
@@ -70,11 +71,13 @@ commit_release_barcode      Commit release barcode based on Discogs release
 commit_recording_credits    Commit remixer based on Discogs track artist credits
 
 Run actions (stateless actions, dependend on MB database updates):
-run_artist_404              Commit removal of 404 links
-run_label_404               Commit removal of 404 links
-run_artist_types            Commit artist types based on disambiguation comments
-run_artist_country          Commit artist country based on disambiguation comments
-run_artist_country2         Commit artist country based on Discogs profile text
+run_artist_404              Removes artist 404 links
+run_label_404               Removes label 404 links
+run_artist_types            Set artist types based on disambiguation comments
+run_artist_country          Set artist country based on disambiguation comments
+run_artist_country2         Set artist country based on Discogs profile text
+run_convert_db_relations    Convert whitelisted artist url relations to 
+                                "page in a database at"-form
 ''')
     args = parser.parse_args()
     if args.a:
@@ -202,5 +205,7 @@ run_artist_country2         Commit artist country based on Discogs profile text
             doClient.run_artist_country(args.l)
         elif args.a == 'run_artist_country2':
             doClient.run_artist_country2(args.l)
+        elif args.a == 'run_convert_db_relations':
+            doClient.run_convert_db_relations(args.l)
     else:
         parser.print_help()
