@@ -318,6 +318,9 @@ class MusicBrainzClient(object):
         if "Release information" not in page:
             raise Exception('unable to post edit')
 
+    def set_release_barcode(self, entity_id, old_barcode, new_barcode, edit_note, auto=False):
+        self._edit_release_information(entity_id, {"barcode": [str(old_barcode),str(new_barcode)]}, edit_note, auto)
+
     def set_release_script(self, entity_id, old_script_id, new_script_id, edit_note, auto=False):
         self._edit_release_information(entity_id, {"script_id": [[str(old_script_id)],[str(new_script_id)]]}, edit_note, auto)
 
