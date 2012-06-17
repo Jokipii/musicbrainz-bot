@@ -2,7 +2,7 @@ DROP TABLE IF EXISTS discogs_db_label_link;
 
 SELECT t1.gid, url(releases_labels.label), 'Name match and '||count(releases_labels.catno)|| ' shared catalog numbers.' AS note
 INTO discogs_db_label_link
-FROM dblink('dbname=musicbrainz port=5433 user=postgres password=postgres', '
+FROM dblink(:dblink, '
 	SELECT label.gid, lower(label_name.name), array_agg(lower(replace(release_label.catalog_number, '' '', ''''))) AS cats
 	FROM release_label
 	JOIN label ON label.id = release_label.label
