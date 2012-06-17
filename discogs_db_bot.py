@@ -11,17 +11,11 @@ if __name__ == '__main__':
                 'clean_release_identifiers', 'clean_artist_identifiers',
                 'do_links', 'do_artist_evidence_track', 'do_artist_all',
                 'do_release_links',
-                'do_artist_links', 'do_artist_links2',
-                'do_artist_links3', 'do_artist_links4', 'do_artist_links5',
-                'do_artist_links6', 'do_artist_links7',
                 'do_member_of_band', 'do_perform_as',
                 'do_release_credits','do_release_format','do_release_barcode',
                 'do_label_links',
                 'do_recording_credits',
                 'report',
-                'commit_artist_links','commit_artist_links2','commit_artist_links3',
-                'commit_artist_links4', 'commit_artist_links5', 'commit_artist_links6',
-                'commit_artist_links7', 
                 'commit_artist_all', 'commit_artist_all2',
                 'commit_member_of_band', 'commit_perform_as',
                 'commit_label_links',
@@ -48,18 +42,6 @@ do_artist_evidence_track    Create artist evidence table based on release track 
                                 (discogs_db_artist_evidence_track)
 do_artist_all               Create artist evidence table with all evidence
                                 (discogs_db_artist_all)
-do_artist_links             Create artist link table (discogs_db_artist_link)
-do_artist_links2            Create VA release track artist link table (discogs_db_artist_link2)
-do_artist_links3            Create artist link table based on band membership 
-                                (discogs_db_artist_link3)
-do_artist_links4            Create artist link table based on external links
-                                (discogs_db_artist_link4)
-do_artist_links5            Create artist link table based on band members
-                                (discogs_db_artist_link5)
-do_artist_links6            Create artist link table based on realname
-                                (discogs_db_artist_link6)
-do_artist_links7            Create artist link table based on release names
-                                (discogs_db_artist_link7)
 do_member_of_band           Create member of band relations based on Discogs
                                 (discogs_db_member_of_band)
 do_perform_as               Create perform as relations based on Discogs
@@ -78,13 +60,6 @@ report                      Create stats report in wiki format
 Commit actions (statefull actions, dependent on do_* actions):
 commit_artist_all           Commit artist links based on name and other evidence
 commit_artist_all2          Commit artist links based on sort name and other evidence
-commit_artist_links         Commit artist links
-commit_artist_links2        Commit VA release track artist links
-commit_artist_links3        Commit artist links based on band membership
-commit_artist_links4        Commit artist links based on name and external urls
-commit_artist_links5        Commit artist links based on already linked band member
-commit_artist_links6        Commit artist links based on realname/performer name
-commit_artist_links7        Commit artist links based on release names
 commit_member_of_band       Commit member of band links based on Discogs data
 commit_perform_as           Commit perform as links based on Discogs data
 commit_label_links          Commit label links

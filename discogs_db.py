@@ -50,78 +50,6 @@ class DiscogsDbClient(object):
             print url + " Done!"
         self.close()
 
-    def commit_artist_links(self, limit):
-        mbClient = self.open(do=True, client=True)
-        queryLinks = "SELECT artist_gid, url, releases FROM discogs_db_artist_link LIMIT %s"
-        queryDelete = "DELETE FROM discogs_db_artist_link WHERE artist_gid = %s"
-        for gid, url, releases in self.dodb.execute(queryLinks, limit):
-            note = "Case insensitive match on name.\nArtist have at least one release (" + releases + ") that have Discogs url.\n"\
-                + "All releases found that way point on same artist at Discogs."
-            mbClient.add_url("artist", gid, 180, "http://www.discogs.com/artist/" + url, note)
-            self.dodb.execute(queryDelete, gid)
-            print url + " Done!"
-        self.close()
-
-    def commit_artist_links2(self, limit):
-        mbClient = self.open(do=True, client=True)
-        queryLinks = "SELECT artist_gid, url, releases FROM discogs_db_artist_link2 LIMIT %s"
-        queryDelete = "DELETE FROM discogs_db_artist_link2 WHERE artist_gid = %s"
-        for gid, url, releases in self.dodb.execute(queryLinks, limit):
-            mbClient.add_url("artist", gid, 180, url, releases)
-            self.dodb.execute(queryDelete, gid)
-            print url + " Done!"
-        self.close()
-
-    def commit_artist_links3(self, limit):
-        mbClient = self.open(do=True, client=True)
-        queryLinks = "SELECT gid, url, note FROM discogs_db_artist_link3 LIMIT %s"
-        queryDelete = "DELETE FROM discogs_db_artist_link3 WHERE gid = %s"
-        for gid, url, note in self.dodb.execute(queryLinks, limit):
-            mbClient.add_url("artist", gid, 180, "http://www.discogs.com/artist/" + url, note)
-            self.dodb.execute(queryDelete, gid)
-            print url + " Done!"
-        self.close()
-
-    def commit_artist_links4(self, limit):
-        mbClient = self.open(do=True, client=True)
-        queryLinks = "SELECT gid, url, note FROM discogs_db_artist_link4 LIMIT %s"
-        queryDelete = "DELETE FROM discogs_db_artist_link4 WHERE gid = %s"
-        for gid, url, note in self.dodb.execute(queryLinks, limit):
-            mbClient.add_url("artist", gid, 180, "http://www.discogs.com/artist/" + url, note)
-            self.dodb.execute(queryDelete, gid)
-            print url + " Done!"
-        self.close()
-
-    def commit_artist_links5(self, limit):
-        mbClient = self.open(do=True, client=True)
-        queryLinks = "SELECT gid, url, note FROM discogs_db_artist_link5 LIMIT %s"
-        queryDelete = "DELETE FROM discogs_db_artist_link5 WHERE gid = %s"
-        for gid, url, note in self.dodb.execute(queryLinks, limit):
-            mbClient.add_url("artist", gid, 180, "http://www.discogs.com/artist/" + url, note)
-            self.dodb.execute(queryDelete, gid)
-            print url + " Done!"
-        self.close()
-
-    def commit_artist_links6(self, limit):
-        mbClient = self.open(do=True, client=True)
-        queryLinks = "SELECT gid, url, note FROM discogs_db_artist_link6 LIMIT %s"
-        queryDelete = "DELETE FROM discogs_db_artist_link6 WHERE gid = %s"
-        for gid, url, note in self.dodb.execute(queryLinks, limit):
-            mbClient.add_url("artist", gid, 180, "http://www.discogs.com/artist/" + url, note)
-            self.dodb.execute(queryDelete, gid)
-            print url + " Done!"
-        self.close()
-
-    def commit_artist_links7(self, limit):
-        mbClient = self.open(do=True, client=True)
-        queryLinks = "SELECT gid, url, note FROM discogs_db_artist_link7 LIMIT %s"
-        queryDelete = "DELETE FROM discogs_db_artist_link7 WHERE gid = %s"
-        for gid, url, note in self.dodb.execute(queryLinks, limit):
-            mbClient.add_url("artist", gid, 180, "http://www.discogs.com/artist/" + url, note)
-            self.dodb.execute(queryDelete, gid)
-            print url + " Done!"
-        self.close()
-
     def commit_member_of_band(self, limit):
         mbClient = self.open(do=True, client=True)
         queryLinks = "SELECT gid0, gid1, note FROM discogs_db_member_of_band LIMIT %s"
@@ -413,51 +341,6 @@ class DiscogsDbClient(object):
         self.dodb.execute(text(doquery), dblink=cfg.MB_DB_LINK)
         mbquery_cleanup = "DROP TABLE IF EXISTS do_release_link_catno"
         self.mbdb.execute(mbquery_cleanup)
-        self.close()
-
-    def do_artist_link_table(self):
-        self.open(do=True)
-        doquery = read_query('do_artist_link')
-        self.dodb.execute(text(doquery), dblink=cfg.MB_DB_LINK)
-        self.close()
-
-    def do_artist_link_table2(self):
-        self.open(do=True, mb=True)
-        mbquery = read_query('do_artist_link2_1_mb')
-        self.mbdb.execute(mbquery)
-        print 'MB side done!'
-        doquery = read_query('do_artist_link2_2')
-        self.dodb.execute(text(doquery), dblink=cfg.MB_DB_LINK)
-        self.close()
-
-    def do_artist_link_table3(self):
-        self.open(do=True)
-        doquery = read_query('do_artist_link3')
-        self.dodb.execute(text(doquery), dblink=cfg.MB_DB_LINK)
-        self.close()
-
-    def do_artist_link_table4(self):
-        self.open(do=True)
-        doquery = read_query('do_artist_link4')
-        self.dodb.execute(text(doquery), dblink=cfg.MB_DB_LINK)
-        self.close()
-
-    def do_artist_link_table5(self):
-        self.open(do=True)
-        doquery = read_query('do_artist_link5')
-        self.dodb.execute(text(doquery), dblink=cfg.MB_DB_LINK)
-        self.close()
-
-    def do_artist_link_table6(self):
-        self.open(do=True)
-        doquery = read_query('do_artist_link6')
-        self.dodb.execute(text(doquery), dblink=cfg.MB_DB_LINK)
-        self.close()
-
-    def do_artist_link_table7(self):
-        self.open(do=True)
-        doquery = read_query('do_artist_link7')
-        self.dodb.execute(text(doquery), dblink=cfg.MB_DB_LINK)
         self.close()
 
     def do_artist_evidence_track(self):
