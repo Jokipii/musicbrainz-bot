@@ -82,10 +82,10 @@ run_convert_db_relations    Convert whitelisted artist url relations to
     args = parser.parse_args()
     if args.a:
         doClient = DiscogsDbClient()
-        if args.a == 'create_functions':
+        if args.a == 'init_functions':
             doClient.create_functions()
             print "functions done!"
-        elif args.a == 'create_tables':
+        elif args.a == 'init_tables':
             doClient.create_country_mapping_table()
             doClient.create_country_search_table()
             doClient.create_media_type_mapping_table()
@@ -95,7 +95,7 @@ run_convert_db_relations    Convert whitelisted artist url relations to
             print "track count done!"
             doClient.create_release_mb_mapping_table()
             print "create tables done!"
-        elif args.a == 'create_views':
+        elif args.a == 'init_views':
             doClient.create_link_views()
             print "create tables done!"
         elif args.a == 'clean_release_identifiers':
