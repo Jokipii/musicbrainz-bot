@@ -12,7 +12,7 @@ if __name__ == '__main__':
                 'do_links', 'do_artist_evidence_track', 'do_artist_all',
                 'do_release_links',
                 'do_member_of_band', 'do_perform_as',
-                'do_release_credits','do_release_format','do_release_barcode',
+                'do_release_credits','do_release_format','do_release_barcode','do_release_cleanup',
                 'do_label_links',
                 'do_recording_credits',
                 'report',
@@ -20,7 +20,7 @@ if __name__ == '__main__':
                 'commit_member_of_band', 'commit_perform_as',
                 'commit_label_links',
                 'commit_release_links','commit_release_credits', 'commit_release_format',
-                'commit_release_barcode',
+                'commit_release_barcode', 'commit_release_cleanup',
                 'commit_recording_credits', 
                 'run_artist_404', 'run_label_404',
                 'run_artist_types','run_artist_country','run_artist_country2',
@@ -53,6 +53,7 @@ do_release_credits          Create release credits link table
                                 (discogs_db_release_artist_credits)
 do_release_format           Create release format table (discogs_db_release_format)
 do_release_barcode          Create release barcode table (discogs_db_release_barcode)
+do_release_cleanup          Create release cleanup table (discogs_db_release_cleanup)
 do_recording_credits        Create remixer table (discogs_db_recording_credits)
 
 Report actions:
@@ -68,6 +69,8 @@ commit_release_links        Commit release links
 commit_release_credits      Commit release advanced relationships
 commit_release_format       Commit release format based on Discogs release
 commit_release_barcode      Commit release barcode based on Discogs release
+commit_release_cleanup      Commit release cleanup based on multiple links and wrong
+                                release country
 commit_recording_credits    Commit remixer based on Discogs track artist credits
 
 Run actions (stateless actions, dependend on MB database updates):
@@ -150,6 +153,8 @@ run_convert_db_relations    Convert whitelisted artist url relations to
             doClient.do_release_format_table()
         elif args.a == 'do_release_barcode':
             doClient.do_release_barcode_table()
+        elif args.a == 'do_release_cleanup':
+            doClient.do_release_cleanup_table()
 
         elif args.a == 'do_recording_credits':
             doClient.do_recording_credits_table()
@@ -191,6 +196,8 @@ run_convert_db_relations    Convert whitelisted artist url relations to
             doClient.commit_release_format(args.l)
         elif args.a == 'commit_release_barcode':
             doClient.commit_release_barcode(args.l)
+        elif args.a == 'commit_release_cleanup':
+            doClient.commit_release_cleanup(args.l)
 
         elif args.a == 'commit_recording_credits':
             doClient.commit_recording_credits(args.l)

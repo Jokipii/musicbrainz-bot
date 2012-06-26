@@ -114,6 +114,17 @@ class DiscogsDbClient(object):
             print gid + " Done!"
         self.close()
 
+    def commit_release_cleanup(self, limit):
+        mbClient = self.open(do=True, client=True)
+        queryLinks = "SELECT id, note FROM discogs_db_release_cleanup LIMIT %s"
+        queryDelete = "DELETE FROM discogs_db_release_cleanup WHERE id = %s"
+        results = self.dodb.execute(queryLinks, limit).fetchall()
+        for id, note in results:
+            mbClient.remove_relationship(id, 'release', 'url', note)
+            self.dodb.execute(queryDelete, id)
+            print str(id) + " Done!"
+        self.close()
+
     def commit_release_artist_relationship(self, limit):
         mbClient = self.open(do=True, client=True)
         queryLinks = "SELECT release_gid, release_url, artist_gid, artist_url FROM do_release_artist_credits LIMIT %s"
@@ -389,6 +400,12 @@ class DiscogsDbClient(object):
     def do_release_barcode_table(self):
         self.open(do=True)
         doquery = read_query('do_release_barcode')
+        self.dodb.execute(text(doquery), dblink=cfg.MB_DB_LINK)
+        self.close()
+
+    def do_release_cleanup_table(self):
+        self.open(do=True)
+        doquery = read_query('do_release_cleanup')
         self.dodb.execute(text(doquery), dblink=cfg.MB_DB_LINK)
         self.close()
 
