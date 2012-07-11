@@ -98,6 +98,7 @@ WITH evidence AS (
 		LEFT JOIN do_artist_link ON do_artist_link.id = artist.id
 		JOIN artist_name ON artist_name.id = artist.name
 		WHERE artist.id <> 1
+        AND do_release_link.edits_pending = 0
 		AND artist.id NOT IN (SELECT artist FROM improper)
 		AND do_artist_link.url ISNULL
 	') AS t1(release_gid uuid, release_name text, artist_gid uuid, artist_name text)
@@ -119,6 +120,7 @@ WITH evidence AS (
 		LEFT JOIN do_artist_link ON do_artist_link.id = artist.id
 		JOIN artist_name ON artist_name.id = artist.name
 		WHERE artist_credit.artist_count = 1
+        AND do_release_group_link.edits_pending = 0
 		AND artist_credit.id <> 1
 		AND do_artist_link.gid ISNULL
 	') AS t1(gid uuid, name text, artist_gid uuid, artist_name text)
