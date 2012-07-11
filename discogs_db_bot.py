@@ -6,6 +6,7 @@ import argparse
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A Discogs DB bot', formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('-l', type=int, help='Set limit of commits. Default 100', default=100)
+    parser.add_argument('-r', type=int, help='Discogs release id')
     parser.add_argument('-a', type=str, required=True,
         choices=('init_functions','init_tables','init_views',
                 'clean_release_identifiers', 'clean_artist_identifiers',
@@ -15,7 +16,7 @@ if __name__ == '__main__':
                 'do_release_credits','do_release_format','do_release_barcode','do_release_cleanup',
                 'do_label_links',
                 'do_recording_credits',
-                'report',
+                'report', 'report_release_artists',
                 'commit_artist_all', 'commit_artist_all2',
                 'commit_member_of_band', 'commit_perform_as',
                 'commit_label_links',
@@ -58,6 +59,7 @@ do_recording_credits        Create remixer table (discogs_db_recording_credits)
 
 Report actions:
 report                      Create stats report in wiki format
+report_release_artists      Show artists related to discogs release
 
 Commit actions (statefull actions, dependent on do_* actions):
 commit_artist_all           Commit artist links based on name and other evidence
@@ -161,6 +163,11 @@ run_convert_db_relations    Convert whitelisted artist url relations to
 
         elif args.a == 'report':
             doClient.report()
+        elif args.a == 'report_release_artists':
+            if args.r:
+                doClient.report_release_artists(args.r)
+            else:
+                print "Discogs release id missing! example 1869555"
 
         elif args.a == 'commit_artist_all':
             doClient.commit_artist_all(args.l)

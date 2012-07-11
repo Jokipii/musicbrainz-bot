@@ -116,7 +116,7 @@ class DiscogsDbClient(object):
 
     def commit_release_cleanup(self, limit):
         mbClient = self.open(do=True, client=True)
-        queryLinks = "SELECT id, note FROM discogs_db_release_cleanup LIMIT %s"
+        queryLinks = "SELECT DISTINCT id, note FROM discogs_db_release_cleanup LIMIT %s"
         queryDelete = "DELETE FROM discogs_db_release_cleanup WHERE id = %s"
         results = self.dodb.execute(queryLinks, limit).fetchall()
         for id, note in results:
@@ -236,6 +236,13 @@ class DiscogsDbClient(object):
         link = self.mbdb.execute('SELECT COUNT(id) FROM do_label_link').fetchone()[0]
         perc = float(link)/float(mb)*100.0
         print '! Labels:\n| '+ str(mb) +'\n| '+ str(do) +'\n| '+ str(link) +('\n| %0.f' % perc) +'%\n|}'
+        self.close()
+
+    def report_release_artists(self, id):
+        self.open(do=True)
+        query = read_query('report_release_artists')
+        for note in self.dodb.execute(text(query), release_id=id):
+            print note[0]
         self.close()
 
     def do_links(self):
