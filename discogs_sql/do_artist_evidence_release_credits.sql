@@ -2,7 +2,7 @@ DROP TABLE IF EXISTS discogs_db_artist_evidence_release_credits;
 
 WITH credits AS (
 	SELECT t1.artist_gid AS gid, url(releases_extraartists.artist_name), 'Artist credited ('||roles.credit
-		||') in http:\\musicbrainz.org\release\'||t1.release_gid
+		||') in http://musicbrainz.org/release/'||t1.release_gid
 		||' and in linked Discogs release '||mb_release_link.url AS note
 	FROM dblink(:dblink, '
 		SELECT artist.gid AS artist_gid, release.gid AS release_gid, link.link_type, lower(artist_name.name) AS artist_name
