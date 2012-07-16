@@ -10,7 +10,7 @@ if __name__ == '__main__':
     parser.add_argument('-a', type=str, required=True,
         choices=('init_functions','init_tables','init_views',
                 'clean_release_identifiers', 'clean_artist_identifiers',
-                'do_links', 'do_artist_evidence_track', 'do_artist_all',
+                'do_links', 'do_artist_evidence_track', 'do_artist_evidence_release_credits', 'do_artist_all',
                 'do_release_links',
                 'do_member_of_band', 'do_perform_as',
                 'do_release_credits','do_release_format','do_release_barcode','do_release_cleanup',
@@ -42,6 +42,8 @@ Actions after database update (create tables for commit actions):
 do_links                    Create link tables (after data updates)
 do_artist_evidence_track    Create artist evidence table based on release track artists
                                 (discogs_db_artist_evidence_track)
+do_artist_evidence_release_credits    Create artist evidence table based on release credits
+                                (discogs_db_artist_evidence_release_credits)
 do_artist_all               Create artist evidence table with all evidence
                                 (discogs_db_artist_all)
 do_member_of_band           Create member of band relations based on Discogs
@@ -114,6 +116,8 @@ run_convert_db_relations    Convert whitelisted artist url relations to
 
         elif args.a == 'do_artist_evidence_track':
             doClient.do_artist_evidence_track()
+        elif args.a == 'do_artist_evidence_release_credits':
+            doClient.do_artist_evidence_release_credits()
         elif args.a == 'do_artist_all':
             doClient.do_artist_all()
         elif args.a == 'do_artist_links':

@@ -374,6 +374,12 @@ class DiscogsDbClient(object):
         self.dodb.execute(text(doquery), dblink=cfg.MB_DB_LINK)
         self.close()
 
+    def do_artist_evidence_release_credits(self):
+        self.open(do=True)
+        doquery = read_query('do_artist_evidence_release_credits')
+        self.dodb.execute(text(doquery), dblink=cfg.MB_DB_LINK)
+        self.close()
+
     def do_artist_all(self):
         self.open(do=True)
         doquery = read_query('do_artist_all')

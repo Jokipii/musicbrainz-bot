@@ -1,3 +1,6 @@
+DELETE FROM discogs_db_artist_evidence_release_credits WHERE gid IN (SELECT gid FROM mb_artist_link);
+DELETE FROM discogs_db_artist_evidence_track WHERE gid IN (SELECT gid FROM mb_artist_link);
+
 DROP TABLE IF EXISTS discogs_db_artist_all;
 
 WITH evidence AS (
@@ -213,6 +216,23 @@ WITH evidence AS (
 and '||sum-3||' more similary linked tracks pointing to same artist'
 		END AS note, sum AS score
 	FROM tracks
+
+	UNION
+
+	SELECT gid, url,
+		CASE 
+		WHEN sum = 1 THEN note[1]
+		WHEN sum = 2 THEN note[1]||'
+'||note[2]
+		WHEN sum = 3 THEN note[1]||'
+'||note[2]||'
+'||note[3]
+		ELSE note[1]||'
+'||note[2]||'
+'||note[3]||'
+and '||sum-3||' more similar releases with credits pointing to same artist'
+		END AS note, sum AS score
+	FROM discogs_db_artist_evidence_release_credits
 
 )
 SELECT gid, url, 'Found Discogs Artist with name match.
