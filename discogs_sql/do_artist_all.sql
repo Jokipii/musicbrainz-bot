@@ -1,6 +1,3 @@
-DELETE FROM discogs_db_artist_evidence_release_credits WHERE gid IN (SELECT gid FROM mb_artist_link);
-DELETE FROM discogs_db_artist_evidence_track WHERE gid IN (SELECT gid FROM mb_artist_link);
-
 DROP TABLE IF EXISTS discogs_db_artist_all;
 
 WITH evidence AS (

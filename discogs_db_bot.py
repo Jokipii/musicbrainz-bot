@@ -31,15 +31,17 @@ if __name__ == '__main__':
 Initial actions:
 init_functions              Create functions
 init_tables                 Create additional tables in Discogs database (release_track_count,
-                                country_mapping, release_format) and in MB database 
-                                (country_search)
+                                country_mapping, release_format) 
+                                and in MB database (country_search)
 init_views                  Create views on MB database (do_artist_link, do_label_link, 
-                                do_release_group_link, do_release_link)
+                                do_release_group_link, do_release_link) and tables on Discogs
+                                (mb_release_link, mb_release_group_link, mb_artist_link, 
+                                mb_label_link)
 clean_release_identifiers   Cleans release_identifiers
 clean_artist_identifiers    Cleans artist_id fields and creates missing foreing keys
 
 Actions after database update (create tables for commit actions):
-do_links                    Create link tables (after data updates)
+do_links                    Update link tables (after MB data updates)
 do_artist_evidence_track    Create artist evidence table based on release track artists
                                 (discogs_db_artist_evidence_track)
 do_artist_evidence_release_credits    Create artist evidence table based on release credits
@@ -106,7 +108,9 @@ run_convert_db_relations    Convert whitelisted artist url relations to
             print "create tables done!"
         elif args.a == 'init_views':
             doClient.create_link_views()
-            print "create tables done!"
+            print "create link views done!"
+            doClient.create_links()
+            print "create link done!"
         elif args.a == 'clean_release_identifiers':
             doClient.clean_release_identifiers()
         elif args.a == 'clean_artist_identifiers':

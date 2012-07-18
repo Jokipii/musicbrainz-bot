@@ -289,6 +289,12 @@ class DiscogsDbClient(object):
         self.mbdb.execute(mbquery)
         self.close()
  
+    def create_links(self):
+        self.open(do=True)
+        doquery = read_query('create_links')
+        self.dodb.execute(text(doquery), dblink=cfg.MB_DB_LINK)
+        self.close()
+
     def create_media_type_mapping_table(self):
         """
         Method creates release_format table where format_id is same as MB
