@@ -92,6 +92,17 @@ class DiscogsDbClient(object):
             print url + " Done!"
         self.close()
 
+    def commit_release_group_links(self, limit):
+        mbClient = self.open(do=True, client=True)
+        queryLinks = "SELECT gid, url, note FROM discogs_db_release_group_link LIMIT %s"
+        queryDelete = "DELETE FROM discogs_db_release_group_link WHERE gid = %s"
+        results = self.dodb.execute(queryLinks, limit).fetchall()
+        for gid, url, note in results:
+            mbClient.add_url("release_group", gid, 90, 'http://www.discogs.com/master/'+str(url), note)
+            self.dodb.execute(queryDelete, gid)
+            print str(url) + " Done!"
+        self.close()
+
     def commit_release_format(self, limit):
         mbClient = self.open(do=True, client=True)
         queryLinks = "SELECT gid, format_id, url FROM discogs_db_release_format LIMIT %s"
@@ -401,6 +412,12 @@ class DiscogsDbClient(object):
     def do_label_link_table(self):
         self.open(do=True)
         doquery = read_query('do_label_link')
+        self.dodb.execute(text(doquery), dblink=cfg.MB_DB_LINK)
+        self.close()
+
+    def do_release_group_link_table(self):
+        self.open(do=True)
+        doquery = read_query('do_release_group_links')
         self.dodb.execute(text(doquery), dblink=cfg.MB_DB_LINK)
         self.close()
 

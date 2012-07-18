@@ -11,7 +11,7 @@ if __name__ == '__main__':
         choices=('init_functions','init_tables','init_views',
                 'clean_release_identifiers', 'clean_artist_identifiers',
                 'do_links', 'do_artist_evidence_track', 'do_artist_evidence_release_credits', 'do_artist_all',
-                'do_release_links',
+                'do_release_links', 'do_release_group_links',
                 'do_member_of_band', 'do_perform_as',
                 'do_release_credits','do_release_format','do_release_barcode','do_release_cleanup',
                 'do_label_links',
@@ -19,8 +19,8 @@ if __name__ == '__main__':
                 'report', 'report_release_artists',
                 'commit_artist_all', 'commit_artist_all2',
                 'commit_member_of_band', 'commit_perform_as',
-                'commit_label_links',
-                'commit_release_links','commit_release_credits', 'commit_release_format',
+                'commit_label_links', 'commit_release_links', 'commit_release_group_links',
+                'commit_release_credits', 'commit_release_format',
                 'commit_release_barcode', 'commit_release_cleanup',
                 'commit_recording_credits', 
                 'run_artist_404', 'run_label_404',
@@ -52,6 +52,7 @@ do_perform_as               Create perform as relations based on Discogs
                                 (discogs_db_perform_as)
 do_label_links              Create label link table (discogs_db_label_link)
 do_release_links            Create release link table (discogs_db_release_link)
+do_release_group_links      Create release group link table (discogs_db_release_group_link)
 do_release_credits          Create release credits link table 
                                 (discogs_db_release_artist_credits)
 do_release_format           Create release format table (discogs_db_release_format)
@@ -70,6 +71,7 @@ commit_member_of_band       Commit member of band links based on Discogs data
 commit_perform_as           Commit perform as links based on Discogs data
 commit_label_links          Commit label links
 commit_release_links        Commit release links
+commit_release_group_links  Commit release group links
 commit_release_credits      Commit release advanced relationships
 commit_release_format       Commit release format based on Discogs release
 commit_release_barcode      Commit release barcode based on Discogs release
@@ -149,10 +151,13 @@ run_convert_db_relations    Convert whitelisted artist url relations to
         elif args.a == 'do_label_links':
             doClient.do_label_link_table()
             print "label links done!"
-
         elif args.a == 'do_release_links':
             doClient.do_release_link_table()
             print "release links done!"
+        elif args.a == 'do_release_group_links':
+            doClient.do_release_group_link_table()
+            print "release links done!"
+
         elif args.a == 'do_release_credits':
             doClient.do_release_credits_table()
         elif args.a == 'do_release_format':
@@ -198,9 +203,11 @@ run_convert_db_relations    Convert whitelisted artist url relations to
 
         elif args.a == 'commit_label_links':
             doClient.commit_label_links(args.l)
-
         elif args.a == 'commit_release_links':
             doClient.commit_release_links(args.l)
+        elif args.a == 'commit_release_group_links':
+            doClient.commit_release_group_links(args.l)
+
         elif args.a == 'commit_release_credits':
             doClient.commit_release_artist_relationship(args.l)
         elif args.a == 'commit_release_format':

@@ -36,3 +36,32 @@ JOIN url ON l_artist_url.entity1 = url.id
 JOIN artist ON l_artist_url.entity0 = artist.id
 JOIN artist_name ON artist.name = artist_name.id
 WHERE l_artist_url.link = 26038;
+
+CREATE OR REPLACE FUNCTION get_link_phrase(link_id integer) RETURNS text AS $$
+DECLARE
+	result text;
+	att RECORD;
+BEGIN
+	SELECT link_type.link_phrase::text
+	INTO result
+	FROM link
+	JOIN link_type ON link_type.id = link.link_type
+	WHERE link.id = link_id;
+	
+	FOR att IN
+		SELECT root.name AS root, COALESCE(string_agg(value.name, ', '), ''::text) AS value
+		FROM link
+		JOIN link_type ON link_type.id = link.link_type
+		JOIN link_type_attribute_type ON link_type_attribute_type.link_type = link_type.id
+		JOIN link_attribute_type root ON root.id = link_type_attribute_type.attribute_type
+		LEFT JOIN link_attribute ON link_attribute.link = link.id
+		LEFT JOIN link_attribute_type value ON (value.id = link_attribute.attribute_type AND value.root = root.id)
+		WHERE link.id = link_id
+		GROUP BY link.id, root.name
+	LOOP
+		result = regexp_replace(result, '{'||att.root||'(:.+?)?}', att.value);
+	END LOOP;
+	
+	RETURN trim(both FROM replace(result, '  ', ' '));
+END
+$$ LANGUAGE 'plpgsql';
