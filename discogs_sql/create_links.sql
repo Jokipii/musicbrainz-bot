@@ -10,7 +10,7 @@ ALTER TABLE mb_release_link ADD COLUMN id integer;
 UPDATE mb_release_link SET id = release.id FROM release WHERE id2 = release.id;
 DELETE FROM mb_release_link WHERE id IS NULL;
 ALTER TABLE mb_release_link DROP COLUMN id2;
-ALTER TABLE mb_release_link ADD CONSTRAINT mb_release_link_pkey PRIMARY KEY (gid, id);
+ALTER TABLE mb_release_link ADD CONSTRAINT mb_release_link_pkey PRIMARY KEY (gid, url);
 ALTER TABLE mb_release_link ADD CONSTRAINT mb_release_link_fk_release FOREIGN KEY (id) REFERENCES release(id);
 
 SELECT t1.gid, t1.name, t1.url, (regexp_matches(t1.url, '(?:^http://www.discogs.com/master/)([0-9]+)'))[1]::integer AS id2, edits_pending
@@ -23,7 +23,7 @@ ALTER TABLE mb_release_group_link ADD COLUMN id integer;
 UPDATE mb_release_group_link SET id = master.id FROM master WHERE id2 = master.id;
 DELETE FROM mb_release_group_link WHERE id IS NULL;
 ALTER TABLE mb_release_group_link DROP COLUMN id2;
-ALTER TABLE mb_release_group_link ADD CONSTRAINT mb_release_group_link_pkey PRIMARY KEY (gid, id);
+ALTER TABLE mb_release_group_link ADD CONSTRAINT mb_release_group_link_pkey PRIMARY KEY (gid, url);
 ALTER TABLE mb_release_group_link ADD CONSTRAINT mb_release_group_link_fk_master FOREIGN KEY (id) REFERENCES master(id);
 
 SELECT t1.gid, t1.name, t1.url, lower(decodeURL(t1.url, 'http://www.discogs.com/artist/')) AS id2, edits_pending

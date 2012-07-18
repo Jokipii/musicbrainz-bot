@@ -16,7 +16,7 @@ WITH mbr AS (
 	SELECT gid, name, url, id, edits_pending
 	FROM mbr
 ), add2 AS (
-	INSERT INTO mb_release_link SELECT gid, name, url, id, edits_pending FROM add1 WHERE add1.id IN (SELECT id FROM release)
+	INSERT INTO mb_release_link(gid, name, url, id, edits_pending) SELECT gid, name, url, id, edits_pending FROM add1 WHERE add1.id IN (SELECT id FROM release)
 )
 DELETE FROM mb_release_link USING remove WHERE mb_release_link.gid = remove.gid AND mb_release_link.id = remove.id;
 
@@ -38,7 +38,7 @@ WITH mbr AS (
 	SELECT gid, name, url, id, edits_pending
 	FROM mbr
 ), add2 AS (
-	INSERT INTO mb_release_group_link SELECT gid, name, url, id, edits_pending FROM add1 WHERE add1.id IN (SELECT id FROM master)
+	INSERT INTO mb_release_group_link(gid, name, url, id, edits_pending) SELECT gid, name, url, id, edits_pending FROM add1 WHERE add1.id IN (SELECT id FROM master)
 )
 DELETE FROM mb_release_group_link USING remove WHERE mb_release_group_link.gid = remove.gid AND mb_release_group_link.id = remove.id;
 
@@ -64,7 +64,7 @@ WITH init AS (
 	SELECT gid, name, url, id, edits_pending
 	FROM mbr
 ), add2 AS (
-	INSERT INTO mb_artist_link SELECT gid, name, url, id, edits_pending FROM add1
+	INSERT INTO mb_artist_link(gid, name, url, id, edits_pending) SELECT gid, name, url, id, edits_pending FROM add1
 ), del_new1 AS (
     DELETE FROM discogs_db_artist_evidence_release_credits WHERE gid IN (SELECT gid FROM add1)
 ), del_new2 AS (
@@ -96,7 +96,7 @@ WITH init AS (
 	SELECT gid, name, url, id, edits_pending
 	FROM mbr
 ), add2 AS (
-	INSERT INTO mb_label_link SELECT gid, name, url, id, edits_pending FROM add1
+	INSERT INTO mb_label_link(gid, name, url, id, edits_pending) SELECT gid, name, url, id, edits_pending FROM add1
 )
 DELETE FROM mb_label_link USING remove WHERE mb_label_link.gid = remove.gid AND mb_label_link.id = remove.id;
 
