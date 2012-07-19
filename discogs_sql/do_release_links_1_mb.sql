@@ -1,20 +1,25 @@
 DROP TABLE IF EXISTS do_release_link_catno;
 
 WITH r AS (
-    SELECT DISTINCT do_label_link.name AS label_name, do_label_link.gid AS label_gid, release_label.catalog_number, release.gid, 
-        release_name.name, tracklist.track_count, medium.format, release.country, release.date_year AS year, 
-        release.status, tracklist.id, release.barcode
-    FROM do_label_link
-    JOIN release_label ON do_label_link.id = release_label.label
-    JOIN release ON release_label.release = release.id
-    JOIN release_name ON release.name = release_name.id
-    JOIN medium ON medium.release = release.id
-    JOIN tracklist ON medium.tracklist = tracklist.id
-    WHERE release_label.catalog_number NOTNULL
+	SELECT release.id, (array_agg(do_label_link.name))[1] AS label_name, (array_agg(do_label_link.gid))[1] AS label_gid, 
+		(array_agg(release_label.catalog_number))[1] AS catalog_number
+	FROM do_label_link
+	JOIN release_label ON (release_label.label = do_label_link.id AND release_label.catalog_number NOTNULL)
+	JOIN release ON (release.id = release_label.release AND release.id NOT IN (SELECT id FROM do_release_link))
+	GROUP BY release.id
+	HAVING count(do_label_link.gid) = 1
+), r2 AS (
+	SELECT r.id, label_name, label_gid, catalog_number, sum(tracklist.track_count) as track_count, 
+		(array_agg(medium.format))[1] AS format
+	FROM r
+	JOIN medium ON medium.release = r.id
+	JOIN tracklist ON tracklist.id = medium.tracklist
+	GROUP BY r.id, label_name, label_gid, catalog_number
+	HAVING count(medium.format) = 1
 )
-SELECT label_name, label_gid, catalog_number, gid, name, SUM(track_count) AS track_count, format, country, year, status, barcode
+SELECT label_name, label_gid, catalog_number, gid, release_name.name, track_count, format, country, 
+	date_year AS year, status, barcode
 INTO do_release_link_catno
-FROM r
-GROUP BY label_name, label_gid, catalog_number, gid, name, format, country, year, status, barcode;
-
-DELETE FROM do_release_link_catno USING do_release_link WHERE do_release_link_catno.gid = do_release_link.gid;
+FROM r2
+JOIN release ON release.id = r2.id
+JOIN release_name ON release_name.id = release.name;

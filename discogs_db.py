@@ -83,7 +83,7 @@ class DiscogsDbClient(object):
 
     def commit_release_links(self, limit):
         mbClient = self.open(do=True, client=True)
-        queryLinks = "SELECT gid, url, note FROM discogs_db_release_link ORDER BY note LIMIT %s"
+        queryLinks = "SELECT gid, url, note FROM discogs_db_release_link ORDER BY sum DESC, note LIMIT %s"
         queryDelete = "DELETE FROM discogs_db_release_link WHERE gid = %s"
         results = self.dodb.execute(queryLinks, limit).fetchall()
         for gid, url, note in results:
