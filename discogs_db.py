@@ -252,8 +252,7 @@ class DiscogsDbClient(object):
     def report_release_artists(self, id):
         self.open(do=True)
         query = read_query('report_release_artists')
-        for note in self.dodb.execute(text(query), release_id=id):
-            print note[0]
+        print self.dodb.execute(text(query), release_id=id).fetchone()[0]
         self.close()
 
     def do_links(self):
