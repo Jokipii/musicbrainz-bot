@@ -255,10 +255,19 @@ class DiscogsDbClient(object):
         print self.dodb.execute(text(query), release_id=id).fetchone()[0]
         self.close()
 
+    def report_release_structure(self, id):
+        self.open(do=True)
+        query = read_query('report_release_structure')
+        print self.dodb.execute(text(query), release_id=id, dblink=cfg.MB_DB_LINK).fetchone()[0]
+        self.close()
+
     def do_links(self):
         self.open(do=True)
         doquery = read_query('do_links')
-        self.dodb.execute(text(doquery), dblink=cfg.MB_DB_LINK)
+        transaction = self.dodb.begin()
+        for updated, event in self.dodb.execute(text(doquery), dblink=cfg.MB_DB_LINK):
+            print updated+' '+event
+        transaction.commit()
         self.close()
 
     def clean_release_identifiers(self):
@@ -325,6 +334,11 @@ class DiscogsDbClient(object):
     def create_release_mb_mapping_table(self):
         self.open(do=True)
         query = read_query('create_release_mb_mapping_table')
+        self.dodb.execute(query)
+
+    def create_extra_tables_and_indexes(self):
+        self.open(do=True)
+        query = read_query('create_extra_tables_and_indexes')
         self.dodb.execute(query)
 
     def create_country_mapping_table(self):
@@ -469,5 +483,7 @@ class DiscogsDbClient(object):
         return None
 
     def close(self):
-        if hasattr(self, 'mbdb'): self.mbdb.close()
-        if hasattr(self, 'dodb'): self.dodb.close()
+        if hasattr(self, 'mbdb'):
+            self.mbdb.close()
+        if hasattr(self, 'dodb'):
+            self.dodb.close()

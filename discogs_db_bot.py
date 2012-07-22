@@ -16,7 +16,7 @@ if __name__ == '__main__':
                 'do_release_credits','do_release_format','do_release_barcode','do_release_cleanup',
                 'do_label_links',
                 'do_recording_credits',
-                'report', 'report_release_artists',
+                'report', 'report_release',
                 'commit_artist_all', 'commit_artist_all2',
                 'commit_member_of_band', 'commit_perform_as',
                 'commit_label_links', 'commit_release_links', 'commit_release_group_links',
@@ -31,7 +31,7 @@ if __name__ == '__main__':
 Initial actions:
 init_functions              Create functions
 init_tables                 Create additional tables in Discogs database (release_track_count,
-                                country_mapping, release_format) 
+                                country_mapping, release_format, update_log) 
                                 and in MB database (country_search)
 init_views                  Create views on MB database (do_artist_link, do_label_link, 
                                 do_release_group_link, do_release_link) and tables on Discogs
@@ -64,7 +64,7 @@ do_recording_credits        Create remixer table (discogs_db_recording_credits)
 
 Report actions:
 report                      Create stats report in wiki format
-report_release_artists      Show artists related to discogs release
+report_release              Create full report from selected discogs release
 
 Commit actions (statefull actions, dependent on do_* actions):
 commit_artist_all           Commit artist links based on name and other evidence
@@ -106,6 +106,8 @@ run_convert_db_relations    Convert whitelisted artist url relations to
             print "track count done!"
             doClient.create_release_mb_mapping_table()
             print "create tables done!"
+            doClient.create_extra_tables_and_indexes()
+            print "create indexes done!"
         elif args.a == 'init_views':
             doClient.create_link_views()
             print "create link views done!"
@@ -176,11 +178,12 @@ run_convert_db_relations    Convert whitelisted artist url relations to
 
         elif args.a == 'report':
             doClient.report()
-        elif args.a == 'report_release_artists':
+        elif args.a == 'report_release':
             if args.r:
-                doClient.report_release_artists(args.r)
+                doClient.report_release_structure(args.r)
+                #doClient.report_release_artists(args.r)
             else:
-                print "Discogs release id missing! example 1869555"
+                print "Discogs release id parameter missing! example -r 1869555"
 
         elif args.a == 'commit_artist_all':
             doClient.commit_artist_all(args.l)

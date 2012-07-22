@@ -65,29 +65,8 @@ WITH art1 AS (
 	LEFT JOIN credits ON credits.artist_id = art2.artist_id
 	GROUP BY art2.artist_name
 )
-SELECT 'Release:
-'||release.title||' http://www.discogs.com/release/'||release.id||
-CASE
-	WHEN mb_release_link.gid NOTNULL THEN '
-	'||mb_release_link.name||' http://musicbrainz.org/release/'||mb_release_link.gid
-	ELSE ''
-END
-||
-CASE
-	WHEN master.id NOTNULL THEN '
-
-Master:
-'||master.title||' http://www.discogs.com/master/'||master.id||
-	CASE
-		WHEN mb_release_group_link.gid NOTNULL THEN '
-	'||mb_release_group_link.name||' http://musicbrainz.org/release-group/'||mb_release_group_link.gid
-		ELSE ''
-	END
-	ELSE ''
-END 
-||'
-
-Linked artists:
+SELECT 
+'Linked artists:
 '||CASE WHEN (SELECT count(*) FROM art WHERE num = 1) > 0 THEN (SELECT string_agg(do_name||'
 '||mb_name||'
 '||credits, '
