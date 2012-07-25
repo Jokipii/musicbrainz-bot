@@ -2,11 +2,13 @@
 from discogs_db import DiscogsDbClient
 import config as cfg
 import argparse
+import os
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A Discogs DB bot', formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('-l', type=int, help='Set limit of commits. Default 100', default=100)
     parser.add_argument('-r', type=int, help='Discogs release id')
+    parser.add_argument('-f', type=str, help='Output filename')
     parser.add_argument('-a', type=str, required=True,
         choices=('init_functions','init_tables','init_views',
                 'clean_release_identifiers', 'clean_artist_identifiers',
@@ -16,7 +18,7 @@ if __name__ == '__main__':
                 'do_release_credits','do_release_format','do_release_barcode','do_release_cleanup',
                 'do_label_links',
                 'do_recording_credits',
-                'report', 'report_release',
+                'report', 'report_release', 'report_images_csv',
                 'commit_artist_all', 'commit_artist_all2',
                 'commit_member_of_band', 'commit_perform_as',
                 'commit_label_links', 'commit_release_links', 'commit_release_group_links',
@@ -65,6 +67,8 @@ do_recording_credits        Create remixer table (discogs_db_recording_credits)
 Report actions:
 report                      Create stats report in wiki format
 report_release              Create full report from selected discogs release
+report_images_csv           Create csv file. Pointing Discogs images for releases that
+                                don't have CAA or Amazon cover art
 
 Commit actions (statefull actions, dependent on do_* actions):
 commit_artist_all           Commit artist links based on name and other evidence
@@ -171,6 +175,7 @@ run_convert_db_relations    Convert whitelisted artist url relations to
         elif args.a == 'do_release_barcode':
             doClient.do_release_barcode_table()
         elif args.a == 'do_release_cleanup':
+            print 'Creating release cleanup table (discogs_db_release_cleanup)'
             doClient.do_release_cleanup_table()
 
         elif args.a == 'do_recording_credits':
@@ -184,6 +189,14 @@ run_convert_db_relations    Convert whitelisted artist url relations to
                 #doClient.report_release_artists(args.r)
             else:
                 print "Discogs release id parameter missing! example -r 1869555"
+        elif args.a == 'report_images_csv':
+            if args.f:
+                filename = os.path.abspath(args.f)
+                print 'Generating report to '+filename
+                doClient.report_images_csv(filename)
+                print 'Report done!'
+            else:
+                print "Output filename not specified! use -f to specify it"
 
         elif args.a == 'commit_artist_all':
             doClient.commit_artist_all(args.l)

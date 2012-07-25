@@ -1,3 +1,5 @@
+INSERT INTO update_log(updated, event) VALUES ('do_release_cleanup', 'started');
+
 DROP TABLE IF EXISTS discogs_db_release_cleanup;
 
 WITH rel_catno AS (
@@ -29,8 +31,8 @@ WITH rel_catno AS (
 		FROM r2
 		JOIN release ON release.id = r2.id
 		JOIN release_name ON release_name.id = release.name;
-	') AS t1(label_gid uuid, label_name text, catalog_number text, gid uuid, name text, 
-		track_count integer, format integer, country integer, year smallint, status integer, barcode text)
+	') AS t1(label_gid uuid, label_name text, catalog_number text, gid uuid, name text, track_count integer, format integer, 
+		country integer, year smallint, status integer, barcode text)
 	JOIN mb_label_link ON t1.label_gid = mb_label_link.gid
 	JOIN label ON mb_label_link.id = label.id
 	JOIN releases_labels ON label.name = releases_labels.label
@@ -75,7 +77,7 @@ WITH rel_catno AS (
 	SELECT gid, url
 	FROM found
 ), remove AS (
-	SELECT t1.*
+	SELECT t1.*, mb_release_link.id AS remove_release_id
 	FROM dblink(:dblink, '
 		WITH uniq AS (
 				SELECT id
@@ -83,25 +85,27 @@ WITH rel_catno AS (
 				GROUP BY id
 				HAVING count(url) > 1
 		)
-		SELECT DISTINCT l_release_url.id, do_release_link.gid, url.url
+		SELECT DISTINCT l_release_url.id, do_release_link.gid, url.url, release_info(do_release_link.id, ''short'')
 		FROM do_release_link
 		JOIN l_release_url ON (do_release_link.id IN (select id FROM uniq) AND l_release_url.entity0 = do_release_link.id)
 		JOIN url ON (url.id = l_release_url.entity1 AND url.url = do_release_link.url)
-	') AS t1(id integer, gid uuid, url text)
+	') AS t1(id integer, gid uuid, url text, release_info text)
 	JOIN removable ON removable.gid = t1.gid AND removable.url = t1.url
+	JOIN mb_release_link ON (mb_release_link.url = removable.url AND mb_release_link.gid = removable.gid)
 )
-SELECT remove.id, 'Release has multiple Discogs urls.
-http://www.discogs.com/release/'||release_id||' is only one that has matching label "'||label_name
-	    ||'", same normalized catalog number "'||catalog_number||'"'||
-	    CASE 
-		WHEN barcode NOTNULL AND do_barcode NOTNULL THEN ', same barcode "'||barcode||'"'
-		ELSE ''
-	    END
-	    ||', same number of tracks, same format, same release country, same release year, and same status.
-
-Removing others.' AS note
+SELECT DISTINCT remove.id, 'Release has multiple Discogs urls.'||E'\r\n'
+	||remove.release_info||E'\r\n'
+	||'http://www.discogs.com/release/'||release_id||' is best match'||E'\r\n'
+	||release_info(release_id, 'short')||E'\r\n'||E'\r\n'
+	||'Removing http://www.discogs.com/release/'||remove_release_id||E'\r\n'
+	||release_info(remove_release_id, 'short')
+	AS note
 INTO discogs_db_release_cleanup
 FROM remove
 JOIN found ON found.gid = remove.gid
-JOIN rel_catno2 ON rel_catno2.gid = remove.gid
-ORDER BY remove.gid
+JOIN rel_catno2 ON rel_catno2.gid = remove.gid;
+
+INSERT INTO update_log(updated, event) 
+VALUES ('do_release_cleanup', (SELECT 'Found '||count(*)||' removable links' FROM discogs_db_release_cleanup));
+
+SELECT event FROM update_log ORDER BY id DESC LIMIT 1;

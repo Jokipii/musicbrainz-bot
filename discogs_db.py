@@ -258,14 +258,33 @@ class DiscogsDbClient(object):
     def report_release_structure(self, id):
         self.open(do=True)
         query = read_query('report_release_structure')
-        print self.dodb.execute(text(query), release_id=id, dblink=cfg.MB_DB_LINK).fetchone()[0]
+        transaction = self.dodb.begin()
+        result = self.dodb.execute(text(query), release_id=id, dblink=cfg.MB_DB_LINK).fetchone()[0]
+        transaction.commit()
+        query = "INSERT INTO update_log(updated, event, timest) VALUES ('report_release_structure', 'end', now())"
+        transaction = self.dodb.begin()
+        self.dodb.execute(query)
+        transaction.commit()
+        print result
+        self.close()
+
+    def report_images_csv(self, filename):
+        self.open(do=True)
+        query = read_query('report_images_csv')
+        transaction = self.dodb.begin()
+        print self.dodb.execute(text(query), filename=filename, dblink=cfg.MB_DB_LINK).fetchone()[0]
+        transaction.commit()
         self.close()
 
     def do_links(self):
-        self.open(do=True)
-        doquery = read_query('do_links')
+        self.open(mb=True, do=True)
+        query = read_query('do_links_1_mb')
+        transaction = self.mbdb.begin()
+        self.mbdb.execute(text(query))
+        transaction.commit()
+        query = read_query('do_links')
         transaction = self.dodb.begin()
-        for updated, event in self.dodb.execute(text(doquery), dblink=cfg.MB_DB_LINK):
+        for updated, event in self.dodb.execute(text(query), dblink=cfg.MB_DB_LINK):
             print updated+' '+event
         transaction.commit()
         self.close()
@@ -455,7 +474,7 @@ class DiscogsDbClient(object):
     def do_release_cleanup_table(self):
         self.open(do=True)
         doquery = read_query('do_release_cleanup')
-        self.dodb.execute(text(doquery), dblink=cfg.MB_DB_LINK)
+        print self.dodb.execute(text(doquery), dblink=cfg.MB_DB_LINK).fetchone()[0]
         self.close()
 
     def do_release_credits_table(self):
