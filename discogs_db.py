@@ -278,10 +278,12 @@ class DiscogsDbClient(object):
 
     def do_links(self):
         self.open(mb=True, do=True)
+        print 'Updating MB database materialised views'
         query = read_query('do_links_1_mb')
         transaction = self.mbdb.begin()
         self.mbdb.execute(text(query))
         transaction.commit()
+        print 'Updating Discogs database'
         query = read_query('do_links')
         transaction = self.dodb.begin()
         for updated, event in self.dodb.execute(text(query), dblink=cfg.MB_DB_LINK):
